@@ -1,0 +1,123 @@
+version: '3.8'
+
+# ==============================================================================
+# ENJAMBRE DE 8 CUENTAS DE GOOGLE EN ANTIGRAVITY (SWARM DOCKER-COMPOSE)
+# Cada contenedor aísla su sesión OAuth en su propio volumen montado en /opt/antigravity/profiles/acct_X
+# ==============================================================================
+
+services:
+  # Cuenta 1: Worker Panamá (PanamáCompra DGCP + Canal de Panamá ACP)
+  node_1_panama:
+    build: .
+    container_name: agy_node_1_pa
+    restart: unless-stopped
+    environment:
+      - HOME=/opt/antigravity/profiles/acct_1
+      - ANTIGRAVITY_PROFILE=acct_1
+      - ROLE=WORKER_PANAMA
+      - GEMINI_MODEL=gemini-flash-high
+    volumes:
+      - ./profiles/acct_1:/opt/antigravity/profiles/acct_1
+      - ./:/app
+
+  # Cuenta 2: Worker Colombia (SECOP II vía Socrata API en datos.gov.co)
+  node_2_colombia:
+    build: .
+    container_name: agy_node_2_co
+    restart: unless-stopped
+    environment:
+      - HOME=/opt/antigravity/profiles/acct_2
+      - ANTIGRAVITY_PROFILE=acct_2
+      - ROLE=WORKER_COLOMBIA
+      - GEMINI_MODEL=gemini-flash-high
+    volumes:
+      - ./profiles/acct_2:/opt/antigravity/profiles/acct_2
+      - ./:/app
+
+  # Cuenta 3: Worker Costa Rica (SICOP Datos Abiertos y carteles)
+  node_3_costa_rica:
+    build: .
+    container_name: agy_node_3_cr
+    restart: unless-stopped
+    environment:
+      - HOME=/opt/antigravity/profiles/acct_3
+      - ANTIGRAVITY_PROFILE=acct_3
+      - ROLE=WORKER_COSTA_RICA
+      - GEMINI_MODEL=gemini-flash-high
+    volumes:
+      - ./profiles/acct_3:/opt/antigravity/profiles/acct_3
+      - ./:/app
+
+  # Cuenta 4: Copiloto Gems & Auditor On-Demand (+100 páginas PDF, RUP, trampas)
+  node_4_copiloto_gems:
+    build: .
+    container_name: agy_node_4_gems
+    restart: unless-stopped
+    environment:
+      - HOME=/opt/antigravity/profiles/acct_4
+      - ANTIGRAVITY_PROFILE=acct_4
+      - ROLE=COPILOTO_AUDITOR_PRO
+      - GEMINI_MODEL=gemini-3.1-pro-high
+    volumes:
+      - ./profiles/acct_4:/opt/antigravity/profiles/acct_4
+      - ./:/app
+
+  # Cuenta 5: Supervisor & Gatekeeper DB (Pydantic, divisas a USD, upsert Supabase)
+  node_5_gatekeeper_db:
+    build: .
+    container_name: agy_node_5_gatekeeper
+    restart: unless-stopped
+    environment:
+      - HOME=/opt/antigravity/profiles/acct_5
+      - ANTIGRAVITY_PROFILE=acct_5
+      - ROLE=SUPERVISOR_GATEKEEPER
+      - GEMINI_MODEL=gemini-3.1-pro-high
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+    volumes:
+      - ./profiles/acct_5:/opt/antigravity/profiles/acct_5
+      - ./:/app
+
+  # Cuenta 6: Motor Opal (Dossier matutino 7:00 a.m., alertas WhatsApp 3 líneas)
+  node_6_motor_opal:
+    build: .
+    container_name: agy_node_6_opal
+    restart: unless-stopped
+    environment:
+      - HOME=/opt/antigravity/profiles/acct_6
+      - ANTIGRAVITY_PROFILE=acct_6
+      - ROLE=MOTOR_OPAL_ALERTS
+      - GEMINI_MODEL=gemini-flash-high
+      - RESEND_API_KEY=${RESEND_API_KEY}
+      - WHATSAPP_API_TOKEN=${WHATSAPP_API_TOKEN}
+    volumes:
+      - ./profiles/acct_6:/opt/antigravity/profiles/acct_6
+      - ./:/app
+
+  # Cuenta 7: Fábrica Pomelli & Programmatic SEO (Carruseles LinkedIn, SEO dinámico)
+  node_7_motor_pomelli:
+    build: .
+    container_name: agy_node_7_pomelli
+    restart: unless-stopped
+    environment:
+      - HOME=/opt/antigravity/profiles/acct_7
+      - ANTIGRAVITY_PROFILE=acct_7
+      - ROLE=POMELLI_PROGRAMMATIC_SEO
+      - GEMINI_MODEL=gemini-3.1-pro-high
+    volumes:
+      - ./profiles/acct_7:/opt/antigravity/profiles/acct_7
+      - ./:/app
+
+  # Cuenta 8: Desarrollo Full-Stack & Hot Standby Failover (/usage > 85%)
+  node_8_dev_failover:
+    build: .
+    container_name: agy_node_8_dev_failover
+    restart: unless-stopped
+    environment:
+      - HOME=/opt/antigravity/profiles/acct_8
+      - ANTIGRAVITY_PROFILE=acct_8
+      - ROLE=FULLSTACK_DEV_FAILOVER
+      - GEMINI_MODEL=gemini-3.1-pro-high
+    volumes:
+      - ./profiles/acct_8:/opt/antigravity/profiles/acct_8
+      - ./:/app

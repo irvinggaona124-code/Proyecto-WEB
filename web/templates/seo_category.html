@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block title %}{{ seo.meta_titulo }}{% endblock %}
+
+{% block meta_tags %}
+<meta name="description" content="{{ seo.meta_descripcion }}">
+<link rel="canonical" href="{{ seo.canonical_url }}">
+<meta property="og:title" content="{{ seo.meta_titulo }}">
+<meta property="og:description" content="{{ seo.meta_descripcion }}">
+<meta property="og:url" content="{{ seo.canonical_url }}">
+<meta property="og:type" content="website">
+{% endblock %}
+
+{% block content %}
+<section class="bg-gradient-to-b from-slate-950 to-slate-900 text-white py-12 px-4 border-b border-slate-800">
+  <div class="max-w-7xl mx-auto">
+    <nav class="flex items-center space-x-2 text-xs text-slate-400 mb-3">
+      <a href="/" class="hover:text-white">Inicio</a>
+      <span>/</span>
+      <a href="/?pais={{ pais_codigo }}" class="hover:text-white">{{ pais_nombre }}</a>
+      <span>/</span>
+      <span class="text-emerald-400 font-semibold">{{ categoria_nombre }}</span>
+    </nav>
+
+    <h1 class="text-3xl sm:text-4xl font-extrabold text-white leading-tight">
+      {{ seo.h1_principal }}
+    </h1>
+    <p class="mt-3 text-slate-300 text-sm max-w-3xl leading-relaxed">
+      {{ seo.meta_descripcion }}
+    </p>
+
+    <!-- Caja de Conversión de la Categoría -->
+    <div class="mt-6 p-4 rounded-xl bg-slate-900/90 border border-emerald-500/30 flex flex-col sm:flex-row items-center justify-between gap-4 max-w-3xl">
+      <div class="text-xs text-slate-200">
+        <span class="font-bold text-emerald-400 block mb-0.5">⚡ Herramienta Recomendada para este Rubro</span>
+        {{ seo.caja_conversion_plantilla }}
+      </div>
+      <a href="/tienda" class="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-lg text-xs transition shrink-0">
+        Comprar Plantilla
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- Listado Filtrado de Licitaciones para SEO -->
+<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+  <h2 class="text-base font-bold text-slate-900 mb-4">
+    Convocatorias Públicas Disponibles ({{ licitaciones|length }} encontradas)
+  </h2>
+
+  <div class="space-y-4">
+    {% for lic in licitaciones %}
+    <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm hover:border-emerald-300 transition">
+      <div class="flex items-center justify-between gap-2 mb-2">
+        <div class="flex items-center space-x-2">
+          <span class="px-2 py-0.5 rounded text-[11px] font-bold bg-slate-100 text-slate-700">{{ lic.pais }}</span>
+          <span class="text-xs text-slate-500 font-medium">ID: {{ lic.id_global }}</span>
+        </div>
+        <div class="text-base font-extrabold text-slate-950">
+          ${{ lic.monto_usd_normalizado|usd }} USD
+        </div>
+      </div>
+
+      <h3 class="text-sm sm:text-base font-bold text-slate-900">
+        <a href="{{ lic.url_oficial }}" target="_blank" class="hover:text-emerald-600 transition">{{ lic.titulo_objeto }}</a>
+      </h3>
+      <p class="text-xs text-slate-500 mt-1">🏛️ {{ lic.entidad_compradora }} • Cierre: {{ lic.fecha_cierre[:10] if lic.fecha_cierre else 'Pronto' }}</p>
+
+      <div class="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between">
+        <span class="text-xs text-slate-600">Plantilla sugerida: <strong class="text-slate-800">{{ lic.plantilla_sugerida }}</strong></span>
+        <a href="/tienda" class="text-xs font-bold text-emerald-600 hover:underline">Descargar ($19 - $29) →</a>
+      </div>
+    </div>
+    {% else %}
+    <div class="p-8 bg-white rounded-xl border border-slate-200 text-center text-xs text-slate-500">
+      No hay procesos abiertos en este momento para esta categoría. Consulta nuevamente en la ingesta de las 7:00 a.m.
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

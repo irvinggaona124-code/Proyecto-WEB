@@ -1,0 +1,51 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #000000;
+  --foreground: #EDEDED;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  letter-spacing: -0.018em;
+}
+
+/* Bordes finos de 1px estilo Geist Vercel */
+.vercel-card {
+  background: #0A0A0A;
+  border: 1px solid #262626;
+  border-radius: 8px;
+  transition: border-color 150ms ease, background 150ms ease;
+}
+.vercel-card:hover {
+  border-color: #404040;
+}
+
+.vercel-btn-primary {
+  background: #FFFFFF;
+  color: #000000;
+  font-weight: 500;
+  border-radius: 6px;
+  transition: all 150ms ease;
+}
+.vercel-btn-primary:hover {
+  background: #E5E5E5;
+}
+
+.vercel-btn-secondary {
+  background: #0A0A0A;
+  color: #A1A1A1;
+  border: 1px solid #262626;
+  font-weight: 500;
+  border-radius: 6px;
+  transition: all 150ms ease;
+}
+.vercel-btn-secondary:hover {
+  background: #171717;
+  color: #FFFFFF;
+  border-color: #404040;
+}

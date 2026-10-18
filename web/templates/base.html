@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full bg-black">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>{% block title %}Lici SA — Inteligencia de Compras Públicas (PA, CO, CR){% endblock %}</title>
+  {% block meta_tags %}{% endblock %}
+
+  <!-- Google Fonts: Inter & JetBrains Mono (Equivalente visual a Geist) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS CDN con Tokens Exactos de Vercel (Geist Design) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          },
+          colors: {
+            vercel: {
+              bg: "#000000",
+              card: "#0A0A0A",
+              border: "#262626",
+              borderHover: "#404040",
+              text: "#EDEDED",
+              muted: "#888888",
+              subtle: "#111111",
+              blue: "#0070F3",
+              emerald: "#00E599",
+              amber: "#F5A623",
+              rose: "#FF0080",
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: #000000;
+      color: #EDEDED;
+      -webkit-tap-highlight-color: transparent;
+      letter-spacing: -0.019em;
+    }
+
+    .vercel-card {
+      background-color: #0A0A0A;
+      border: 1px solid #262626;
+      border-radius: 8px;
+      transition: border-color 150ms ease;
+    }
+    .vercel-card:hover {
+      border-color: #404040;
+    }
+
+    .vercel-btn-white {
+      background-color: #FFFFFF;
+      color: #000000;
+      font-weight: 500;
+      border-radius: 6px;
+      transition: all 150ms ease;
+    }
+    .vercel-btn-white:hover {
+      background-color: #E5E5E5;
+    }
+
+    .vercel-btn-ghost {
+      background-color: #0A0A0A;
+      border: 1px solid #262626;
+      color: #A1A1A1;
+      font-weight: 500;
+      border-radius: 6px;
+      transition: all 150ms ease;
+    }
+    .vercel-btn-ghost:hover {
+      background-color: #171717;
+      color: #FFFFFF;
+      border-color: #404040;
+    }
+  </style>
+</head>
+<body class="min-h-full flex flex-col bg-black text-[#EDEDED] antialiased selection:bg-[#0070F3] selection:text-white">
+
+  <!-- TOP NAVBAR VERCEL STYLE -->
+  <header class="border-b border-[#262626] bg-black/85 backdrop-blur-md sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between text-xs">
+      
+      <!-- Brand & Project Switcher -->
+      <div class="flex items-center space-x-3">
+        <a href="/" class="flex items-center space-x-2 font-bold text-white hover:opacity-85 transition">
+          <svg width="18" height="18" viewBox="0 0 76 65" fill="#FFFFFF">
+            <path d="M37.5274 0L75.0548 65H0L37.5274 0Z" />
+          </svg>
+          <span class="text-sm font-semibold tracking-tight">Lici SA</span>
+        </a>
+        <span class="text-[#404040]">/</span>
+        <span class="text-[#888888] font-mono text-[11px]">Compras Públicas</span>
+      </div>
+
+      <!-- Navigation & Pro Action -->
+      <div class="flex items-center space-x-3">
+        <div class="hidden sm:flex items-center space-x-1.5 px-2.5 py-1 rounded-full border border-[#262626] bg-[#0A0A0A] text-[#888888] font-mono text-[11px]">
+          <span class="w-1.5 h-1.5 rounded-full bg-[#00E599] animate-pulse"></span>
+          <span>8 Nodos IA</span>
+        </div>
+
+        <a href="/tienda" class="vercel-btn-white px-3.5 py-1.5 text-xs font-semibold shadow-sm hover:scale-[1.02] transition active:scale-[0.98]">
+          Plan Pro ($29/m)
+        </a>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- CONTENIDO PRINCIPAL -->
+  <main class="flex-grow">
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- VERCEL FOOTER MINIMALISTA -->
+  <footer class="border-t border-[#262626] bg-black py-10 text-xs text-[#888888] mt-20">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div class="flex items-center space-x-2">
+        <svg width="14" height="14" viewBox="0 0 76 65" fill="#888888">
+          <path d="M37.5274 0L75.0548 65H0L37.5274 0Z" />
+        </svg>
+        <span class="text-white font-medium">Lici SA</span>
+        <span>— Inteligencia B2B de Compras Públicas (Panamá, Colombia y Costa Rica)</span>
+      </div>
+      <div class="flex items-center space-x-4 font-mono text-[11px]">
+        <span>Desplegado en Vercel</span>
+        <span>•</span>
+        <span>Edge Network TTFB &lt; 50ms</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Toast Notification Container -->
+  <div id="global-toast" class="fixed bottom-6 right-6 z-50 px-4 py-2.5 rounded-lg border border-[#333333] bg-[#111111] text-white text-xs font-mono shadow-2xl hidden items-center space-x-2 transition-all">
+    <span id="global-toast-text"></span>
+  </div>
+
+  <script>
+    function showToast(msg) {
+      const toast = document.getElementById("global-toast");
+      const text = document.getElementById("global-toast-text");
+      text.innerText = msg;
+      toast.classList.remove("hidden");
+      toast.classList.add("flex");
+      setTimeout(() => {
+        toast.classList.add("hidden");
+        toast.classList.remove("flex");
+      }, 2500);
+    }
+
+    function copyToClipboard(text, label) {
+      navigator.clipboard.writeText(text);
+      showToast("✓ " + label + " copiado al portapapeles");
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,358 @@
+{% extends "base.html" %}
+
+{% block title %}Plantillas y Activos Digitales — Lici SA{% endblock %}
+
+{% block content %}
+<!-- Header Minimalista Estilo Vercel -->
+<section class="pt-12 pb-10 border-b border-[#262626] px-4 sm:px-6 bg-black text-center">
+  <div class="max-w-4xl mx-auto space-y-3">
+    <div class="inline-flex items-center space-x-2 px-3 py-0.5 rounded-full border border-[#262626] bg-[#0A0A0A] text-[#888888] text-xs font-mono">
+      <span>● Descarga Inmediata en Excel</span>
+      <span>•</span>
+      <span>Sin Demos Obligatorias</span>
+    </div>
+    <h1 class="text-3xl sm:text-5xl font-bold tracking-tight text-white">
+      Plantillas Operativas de Licitación Pública
+    </h1>
+    <p class="text-[#888888] text-xs sm:text-sm max-w-2xl mx-auto leading-relaxed">
+      Herramientas listas en Excel (.xlsx) para cálculo de APU con A.I.U., evaluación de capacidad financiera RUP y matrices de cumplimiento técnico contra descalificaciones del Estado.
+    </p>
+  </div>
+</section>
+
+<!-- Catálogo de Activos Digitales Vercel Style -->
+<section class="max-w-7xl mx-auto px-4 sm:px-6 py-12">
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+    {% for key, p in plantillas.items() %}
+    {% if key != 'KIT_MAESTRO' %}
+    <div class="vercel-card p-6 flex flex-col justify-between">
+      <div>
+        <div class="flex items-center justify-between mb-4">
+          <span class="text-[11px] font-mono px-2 py-0.5 rounded border border-[#262626] bg-[#111111] text-[#A1A1A1]">
+            {{ p.formato }}
+          </span>
+          <div class="text-right">
+            <span class="text-2xl font-bold font-mono text-white">
+              ${{ "{:,.0f}".format(p.precio_usd) }}
+            </span>
+            <span class="text-xs text-[#888888] font-sans">USD</span>
+          </div>
+        </div>
+
+        <h3 class="text-base font-semibold text-white leading-snug">
+          {{ p.nombre }}
+        </h3>
+        <p class="text-xs text-[#888888] mt-2 leading-relaxed">
+          {{ p.descripcion_corta }}
+        </p>
+
+        <div class="mt-4 pt-4 border-t border-[#1F1F1F]">
+          <span class="text-[10px] font-mono uppercase text-[#666666] tracking-wider block mb-2">Entregables:</span>
+          <ul class="space-y-1.5 text-xs text-[#CCCCCC]">
+            {% for b in p.beneficios_clave %}
+            <li class="flex items-start space-x-2">
+              <span class="text-[#00E599] font-bold">✓</span>
+              <span>{{ b }}</span>
+            </li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+
+      <!-- Acciones de Compra (Zero Ghost Buttons) -->
+      <div class="mt-6 pt-4 border-t border-[#1F1F1F] space-y-2">
+        <button
+          onclick="abrirModalTiendaCheckout('{{ p.id_plantilla }}', '{{ p.nombre|replace('\'', '\\\'') }}', {{ p.precio_usd }})"
+          class="vercel-btn-white w-full py-2.5 text-xs font-semibold shadow-sm"
+        >
+          Descargar con Billetera Local (${{ "{:,.0f}".format(p.precio_usd) }} USD)
+        </button>
+        <a
+          href="{{ p.enlace_pago_stripe }}"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="vercel-btn-ghost w-full py-2 text-xs text-center block"
+        >
+          Pagar con Tarjeta Internacional (Stripe)
+        </a>
+      </div>
+    </div>
+    {% endif %}
+    {% endfor %}
+
+    <!-- DESTACADO: KIT MAESTRO CON LAS 5 PLANTILLAS -->
+    <div class="vercel-card p-6 sm:p-8 flex flex-col justify-between border-2 border-white/20 bg-gradient-to-b from-[#111111] to-black md:col-span-2 lg:col-span-3 relative overflow-hidden">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
+        <div class="lg:col-span-2 space-y-2">
+          <span class="text-xs font-mono uppercase text-[#00E599] block">Ahorro del 45 % · Paquete Completo</span>
+          <h3 class="text-2xl sm:text-3xl font-bold text-white tracking-tight">Kit Maestro de Licitaciones Públicas (5 Plantillas)</h3>
+          <p class="text-xs text-[#888888] max-w-xl leading-relaxed">
+            Incluye la Matriz de Cumplimiento Técnico, Calculadora APU y A.I.U., Evaluador RUP, Matriz de Homologación de Fichas y Tablero CRM de Cobro Estatal.
+          </p>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-3 text-xs text-[#CCCCCC]">
+            <div class="flex items-center space-x-2"><span class="text-[#00E599]">✓</span><span>Checklist de Admisibilidad Legal</span></div>
+            <div class="flex items-center space-x-2"><span class="text-[#00E599]">✓</span><span>Calculadora APU con Margen A.I.U.</span></div>
+            <div class="flex items-center space-x-2"><span class="text-[#00E599]">✓</span><span>Evaluador Financiero RUP / RIE</span></div>
+            <div class="flex items-center space-x-2"><span class="text-[#00E599]">✓</span><span>Matriz de Homologación de Fichas</span></div>
+            <div class="flex items-center space-x-2"><span class="text-[#00E599]">✓</span><span>CRM de Cobro y Facturación Estatal</span></div>
+            <div class="flex items-center space-x-2"><span class="text-[#00E599]">✓</span><span>Actualizaciones vitalicias incluidas</span></div>
+          </div>
+        </div>
+
+        <div class="flex flex-col justify-center items-center lg:items-end border-t lg:border-t-0 lg:border-l border-[#262626] pt-4 lg:pt-0 lg:pl-6 text-center lg:text-right">
+          <div class="text-[#666666] text-xs line-through">$121 USD por separado</div>
+          <div class="text-3xl sm:text-4xl font-bold font-mono text-white my-1">$69 <span class="text-xs font-sans text-[#888888]">USD</span></div>
+          <p class="text-[11px] text-[#888888] mb-4">Pago único · Acceso inmediato</p>
+
+          <button
+            onclick="abrirModalTiendaCheckout('KIT_MAESTRO', 'Kit Maestro Completo (5 Plantillas)', 69)"
+            class="vercel-btn-white w-full py-3 px-6 text-xs font-semibold shadow-lg"
+          >
+            Descargar Kit Maestro ($69 USD)
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- SECCIÓN PLANES RECURRENTES SAAS -->
+<section id="planes" class="max-w-7xl mx-auto px-4 sm:px-6 py-12 border-t border-[#262626]">
+  <div class="text-center max-w-3xl mx-auto mb-10 space-y-2">
+    <div class="inline-flex items-center px-2.5 py-0.5 rounded-full border border-[#262626] bg-[#0A0A0A] text-[#888888] text-xs font-mono">
+      Planes con Inteligencia Artificial
+    </div>
+    <h2 class="text-2xl sm:text-3xl font-bold text-white tracking-tight">Suscripciones SaaS Recurrentes</h2>
+    <p class="text-[#888888] text-xs sm:text-sm">
+      Alertas instantáneas a WhatsApp, descarga de todas las plantillas sin costo adicional y auditoría profunda de pliegos con el Copiloto de IA.
+    </p>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+    <!-- PLAN PRO -->
+    <div class="vercel-card p-6 sm:p-8 flex flex-col justify-between border-white/30 bg-[#0A0A0A]">
+      <div>
+        <div class="flex items-center justify-between">
+          <h3 class="text-lg font-bold text-white">Plan Pro</h3>
+          <span class="px-2 py-0.5 rounded border border-[#00E599]/30 bg-[#00E599]/10 text-[#00E599] font-mono text-[10px]">
+            Recomendado
+          </span>
+        </div>
+        <p class="text-xs text-[#888888] mt-1">Para contratistas individuales y empresas que licitan activamente.</p>
+        <div class="my-5">
+          <span class="text-3xl font-bold font-mono text-white">$29</span>
+          <span class="text-xs text-[#888888] font-sans"> USD / mes</span>
+        </div>
+        <ul class="space-y-2 text-xs text-[#CCCCCC]">
+          {% for b in planes['PLAN_PRO']['beneficios'] %}
+          <li class="flex items-start space-x-2">
+            <span class="text-[#00E599] font-bold">✓</span>
+            <span>{{ b }}</span>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+
+      <div class="mt-6 pt-4 border-t border-[#1F1F1F]">
+        <button
+          onclick="abrirModalTiendaCheckout('PLAN_PRO', 'Suscripción Plan Pro ($29/mes)', 29)"
+          class="vercel-btn-white w-full py-2.5 text-xs font-semibold"
+        >
+          Activar Plan Pro ($29/mes)
+        </button>
+      </div>
+    </div>
+
+    <!-- PLAN EQUIPOS -->
+    <div class="vercel-card p-6 sm:p-8 flex flex-col justify-between bg-[#0A0A0A]">
+      <div>
+        <h3 class="text-lg font-bold text-white">Plan Equipos</h3>
+        <p class="text-xs text-[#888888] mt-1">Para departamentos de licitaciones corporativas y consorcios.</p>
+        <div class="my-5">
+          <span class="text-3xl font-bold font-mono text-white">$69</span>
+          <span class="text-xs text-[#888888] font-sans"> USD / mes</span>
+        </div>
+        <ul class="space-y-2 text-xs text-[#CCCCCC]">
+          {% for b in planes['PLAN_EQUIPOS']['beneficios'] %}
+          <li class="flex items-start space-x-2">
+            <span class="text-white font-bold">✓</span>
+            <span>{{ b }}</span>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+
+      <div class="mt-6 pt-4 border-t border-[#1F1F1F]">
+        <button
+          onclick="abrirModalTiendaCheckout('PLAN_EQUIPOS', 'Suscripción Plan Equipos ($69/mes)', 69)"
+          class="vercel-btn-ghost w-full py-2.5 text-xs font-semibold"
+        >
+          Activar Plan Equipos ($69/mes)
+        </button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- MODAL CHECKOUT VERCEL TIENDA -->
+<div id="modal-tienda-checkout" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+  <div class="vercel-card bg-[#0A0A0A] border-[#262626] max-w-lg w-full p-6 space-y-4 shadow-2xl relative">
+    <div class="flex items-center justify-between border-b border-[#262626] pb-3">
+      <div>
+        <span class="text-[10px] font-mono text-[#00E599]">● Entrega Inmediata</span>
+        <h3 id="tienda-modal-titulo" class="text-sm font-bold text-white mt-0.5">Producto</h3>
+      </div>
+      <button onclick="cerrarModalTiendaCheckout()" class="text-[#888888] hover:text-white">&times;</button>
+    </div>
+
+    <div id="tienda-modal-body" class="space-y-4 text-xs">
+      <div class="p-3 rounded border border-[#262626] bg-[#111111] flex items-center justify-between font-mono">
+        <span class="text-[#888888]">Total a pagar:</span>
+        <span class="text-lg font-bold text-white">$<span id="tienda-modal-precio">19</span>.00 USD</span>
+      </div>
+
+      <div>
+        <span class="text-[10px] font-mono text-[#888888] uppercase block mb-1.5">Método de Pago:</span>
+        <div class="grid grid-cols-4 gap-2">
+          <button type="button" onclick="seleccionarTiendaMetodo('YAPPY')" id="tienda-btn-YAPPY" class="p-2 rounded border border-[#0070F3] bg-[#0070F3]/10 text-white font-bold text-center">
+            🇵🇦 Yappy
+          </button>
+          <button type="button" onclick="seleccionarTiendaMetodo('NEQUI')" id="tienda-btn-NEQUI" class="p-2 rounded border border-[#262626] bg-[#111111] text-[#888888] font-medium text-center">
+            🇨🇴 Nequi
+          </button>
+          <button type="button" onclick="seleccionarTiendaMetodo('SINPE')" id="tienda-btn-SINPE" class="p-2 rounded border border-[#262626] bg-[#111111] text-[#888888] font-medium text-center">
+            🇨🇷 SINPE
+          </button>
+          <button type="button" onclick="seleccionarTiendaMetodo('CARD')" id="tienda-btn-CARD" class="p-2 rounded border border-[#262626] bg-[#111111] text-[#888888] font-medium text-center">
+            💳 Tarjeta
+          </button>
+        </div>
+      </div>
+
+      <div id="tienda-billetera-detalles" class="p-3 rounded border border-[#262626] bg-[#0A0A0A] font-mono text-[11px] space-y-1">
+        <div class="text-[#888888]">Directorio Comercial Yappy:</div>
+        <div class="flex items-center justify-between text-white font-bold">
+          <span>@LicitacionesClick</span>
+          <button type="button" onclick="copyToClipboard('@LicitacionesClick', 'Directorio Yappy')" class="px-2 py-0.5 rounded bg-[#1F1F1F] text-white text-[10px]">Copiar</button>
+        </div>
+      </div>
+
+      <form onsubmit="enviarTiendaPago(event)" class="space-y-3 pt-1">
+        <input type="tel" id="tienda-whatsapp" required placeholder="Número de WhatsApp (+507 6000-0000 o +57...)" class="w-full h-10 px-3 rounded bg-[#0A0A0A] border border-[#262626] text-white text-xs focus:outline-none focus:border-white">
+        <input type="email" id="tienda-email" required placeholder="Correo corporativo" class="w-full h-10 px-3 rounded bg-[#0A0A0A] border border-[#262626] text-white text-xs focus:outline-none focus:border-white">
+        <button type="submit" id="tienda-submit-btn" class="vercel-btn-white w-full py-2.5 text-xs font-bold text-center block">
+          Confirmar y Recibir Archivo
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  let tiendaItem = { id: "", nombre: "", precio: 19, metodo: "YAPPY" };
+
+  function abrirModalTiendaCheckout(id, nombre, precio) {
+    tiendaItem.id = id;
+    tiendaItem.nombre = nombre;
+    tiendaItem.precio = precio;
+    document.getElementById("tienda-modal-titulo").innerText = nombre;
+    document.getElementById("tienda-modal-precio").innerText = precio;
+    seleccionarTiendaMetodo("YAPPY");
+    const m = document.getElementById("modal-tienda-checkout");
+    m.classList.remove("hidden");
+    m.classList.add("flex");
+  }
+
+  function cerrarModalTiendaCheckout() {
+    const m = document.getElementById("modal-tienda-checkout");
+    m.classList.add("hidden");
+    m.classList.remove("flex");
+  }
+
+  function seleccionarTiendaMetodo(metodo) {
+    tiendaItem.metodo = metodo;
+    ["YAPPY", "NEQUI", "SINPE", "CARD"].forEach(m => {
+      const btn = document.getElementById(`tienda-btn-${m}`);
+      if (btn) {
+        if (m === metodo) {
+          btn.className = "p-2 rounded border border-[#0070F3] bg-[#0070F3]/10 text-white font-bold text-center";
+        } else {
+          btn.className = "p-2 rounded border border-[#262626] bg-[#111111] text-[#888888] font-medium text-center";
+        }
+      }
+    });
+
+    const box = document.getElementById("tienda-billetera-detalles");
+    if (metodo === "YAPPY") {
+      box.innerHTML = `
+        <div class="text-[#888888]">Directorio Comercial Yappy:</div>
+        <div class="flex items-center justify-between text-white font-bold mt-1">
+          <span>@LicitacionesClick</span>
+          <button type="button" onclick="copyToClipboard('@LicitacionesClick', 'Directorio Yappy')" class="px-2 py-0.5 rounded bg-[#1F1F1F] text-white text-[10px]">Copiar</button>
+        </div>
+      `;
+    } else if (metodo === "NEQUI") {
+      box.innerHTML = `
+        <div class="text-[#888888]">Número Nequi Colombia:</div>
+        <div class="flex items-center justify-between text-white font-bold mt-1">
+          <span>300 123 4567</span>
+          <button type="button" onclick="copyToClipboard('3001234567', 'Número Nequi')" class="px-2 py-0.5 rounded bg-[#1F1F1F] text-white text-[10px]">Copiar</button>
+        </div>
+      `;
+    } else if (metodo === "SINPE") {
+      box.innerHTML = `
+        <div class="text-[#888888]">Teléfono SINPE Móvil Costa Rica:</div>
+        <div class="flex items-center justify-between text-white font-bold mt-1">
+          <span>+506 8888 9999</span>
+          <button type="button" onclick="copyToClipboard('+50688889999', 'Número SINPE')" class="px-2 py-0.5 rounded bg-[#1F1F1F] text-white text-[10px]">Copiar</button>
+        </div>
+      `;
+    } else {
+      box.innerHTML = `<div class="text-white">Pago seguro procesado por Stripe.</div>`;
+    }
+  }
+
+  async function enviarTiendaPago(e) {
+    e.preventDefault();
+    const btn = document.getElementById("tienda-submit-btn");
+    const wa = document.getElementById("tienda-whatsapp").value;
+    const em = document.getElementById("tienda-email").value;
+    btn.disabled = true;
+    btn.innerText = "Procesando...";
+
+    try {
+      const resp = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id_licitacion: tiendaItem.id,
+          codigo_oficial: tiendaItem.id,
+          tipo_producto: "TEMPLATE",
+          metodo_pago: tiendaItem.metodo,
+          monto_usd: tiendaItem.precio,
+          whatsapp: wa,
+          email: em
+        })
+      });
+      const data = await resp.json();
+      document.getElementById("tienda-modal-body").innerHTML = `
+        <div class="text-center py-4 space-y-3 font-mono">
+          <div class="text-[#00E599] text-xl">✓ Orden ${data.orden.id_orden} Registrada</div>
+          <p class="text-xs text-[#888888]">${data.instruccion_pago}</p>
+          <p class="text-[11px] text-[#666666]">Enlace enviado a WhatsApp ${wa} y al correo ${em}.</p>
+          <button onclick="cerrarModalTiendaCheckout();" class="vercel-btn-white w-full py-2 text-xs">
+            Continuar en la Tienda
+          </button>
+        </div>
+      `;
+    } catch (err) {
+      alert("Error: " + err);
+      btn.disabled = false;
+      btn.innerText = "Confirmar y Recibir Archivo";
+    }
+  }
+</script>
+{% endblock %}
