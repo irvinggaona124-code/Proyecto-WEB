@@ -1,1063 +1,168 @@
 "use client";
 
-import React, { useState, useMemo, useEffect, useCallback } from "react";
-import {
-  Search,
-  ArrowUpRight,
-  Copy,
-  Check,
-  X,
-  RefreshCw,
-  Terminal,
-  AlertTriangle,
-  FileSpreadsheet,
-  SlidersHorizontal,
-} from "lucide-react";
+import React, { useEffect } from "react";
 
-// ============================================================================
-// TIPOS DE DATOS Y RESPALDO LOCAL
-// ============================================================================
-
-interface Tender {
-  id: string;
-  codigo: string;
-  pais: "PA" | "CO" | "CR";
-  entidad: string;
-  titulo: string;
-  categoria: string;
-  montoUSD: number;
-  monedaOriginal: string;
-  montoOriginal: number;
-  cierre: string;
-  horasRestantes: number;
-  adenda: boolean;
-  urlOficial: string;
-  clausulasTrampa: string[];
-  precioPlantilla: number;
-}
-
-const FALLBACK_TENDERS: Tender[] = [
-  {
-    id: "PA-001",
-    codigo: "2026-0-10-0-08-LP-049120",
-    pais: "PA",
-    entidad: "Ministerio de Salud (MINSA)",
-    titulo:
-      "Suministro e instalación de 45 unidades manejadoras de aire quirúrgico con filtración HEPA para hospitales regionales",
-    categoria: "Mantenimiento y Climatización",
-    montoUSD: 185000,
-    monedaOriginal: "USD",
-    montoOriginal: 185000,
-    cierre: "2026-10-24",
-    horasRestantes: 52,
-    adenda: false,
-    urlOficial: "https://www.panamacompra.gob.pa",
-    clausulasTrampa: [
-      "Cláusula 14.2: Exige carta de respaldo de fabricante con apostilla consular de menos de 15 días calendario.",
-      "Plazo perentorio de subsanación de fianza de propuesta fijado en solo 24 horas hábiles tras apertura.",
-    ],
-    precioPlantilla: 19,
-  },
-  {
-    id: "CO-002",
-    codigo: "SECOP-II-LP-2026-8841",
-    pais: "CO",
-    entidad: "Instituto Nacional de Vías (INVIAS)",
-    titulo:
-      "Mantenimiento periódico, parcheo técnico y señalización reflectiva de corredor vial secundario Tramo 4",
-    categoria: "Obras Civiles e Infraestructura",
-    montoUSD: 345000,
-    monedaOriginal: "COP",
-    montoOriginal: 1420000000,
-    cierre: "2026-10-26",
-    horasRestantes: 96,
-    adenda: true,
-    urlOficial: "https://www.colombiacompra.gov.co/secop-ii",
-    clausulasTrampa: [
-      "Clasificador UNSPSC 721410 obligatorio en el Registro Único de Proponentes (RUP) sin habilitación de códigos conexos.",
-      "Índice de liquidez exigido >= 1.6 y endeudamiento <= 65 % calculados al corte fiscal anterior.",
-    ],
-    precioPlantilla: 29,
-  },
-  {
-    id: "CR-003",
-    codigo: "SICOP-2026LA-000142-CCSS",
-    pais: "CR",
-    entidad: "Caja Costarricense de Seguro Social (CCSS)",
-    titulo:
-      "Servicio administrado de seguridad perimetral, firewall de última generación y soporte SOC 24/7 por 24 meses",
-    categoria: "Tecnología y Telecomunicaciones",
-    montoUSD: 192000,
-    monedaOriginal: "CRC",
-    montoOriginal: 98500000,
-    cierre: "2026-10-22",
-    horasRestantes: 28,
-    adenda: false,
-    urlOficial: "https://www.sicop.go.cr",
-    clausulasTrampa: [
-      "Garantía de cumplimiento del 10 % debe consignarse exclusivamente en dólares en un banco estatal costarricense.",
-      "SLA de respuesta para incidentes de severidad 1 estipulado en < 15 minutos en sitio.",
-    ],
-    precioPlantilla: 19,
-  },
-  {
-    id: "PA-004",
-    codigo: "ACP-RFP-2026-90412",
-    pais: "PA",
-    entidad: "Autoridad del Canal de Panamá (ACP)",
-    titulo:
-      "Rehabilitación electromecánica de compuertas y sistemas hidráulicos de esclusas del Pacífico",
-    categoria: "Mantenimiento y Facility Management",
-    montoUSD: 890000,
-    monedaOriginal: "USD",
-    montoOriginal: 890000,
-    cierre: "2026-11-17",
-    horasRestantes: 180,
-    adenda: true,
-    urlOficial: "https://micanaldepanama.com",
-    clausulasTrampa: [
-      "Experiencia corporativa certificada mínima de 10 años en esclusas de navegación interoceánica.",
-      "Ingeniero residente debe poseer idoneidad expedida por la Junta Técnica de Ingeniería y Arquitectura de Panamá (JTIA).",
-    ],
-    precioPlantilla: 39,
-  },
-];
-
-const WHATSAPP_NUMBER = "50765787219";
-const WHATSAPP_DISPLAY = "+507 6578-7219";
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
-
-// ============================================================================
-// COMPONENTE CROSSHAIR (+) ARQUITECTÓNICO DE VERCEL
-// ============================================================================
-
-function Crosshair({ className = "" }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 15 15"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      className={`w-[15px] h-[15px] text-white/30 pointer-events-none select-none z-10 ${className}`}
-    >
-      <path d="M7.5 0V15M0 7.5H15" stroke="currentColor" strokeWidth="1" />
-    </svg>
-  );
-}
-
-// ============================================================================
-// PÁGINA PRINCIPAL (GEIST DESIGN SYSTEM)
-// ============================================================================
-
-export default function LiciSaPlatform() {
-  const [tenders, setTenders] = useState<Tender[]>(FALLBACK_TENDERS);
-  const [search, setSearch] = useState("");
-  const [countryFilter, setCountryFilter] = useState<
-    "ALL" | "PA" | "CO" | "CR"
-  >("ALL");
-  const [sortBy, setSortBy] = useState<"DEFAULT" | "BUDGET" | "DEADLINE">(
-    "DEFAULT"
-  );
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [apiConnected, setApiConnected] = useState(false);
-
-  // Estados de Modales
-  const [auditTender, setAuditTender] = useState<Tender | null>(null);
-  const [auditLoading, setAuditLoading] = useState(false);
-  const [dynamicFindings, setDynamicFindings] = useState<string[] | null>(null);
-
-  const [checkoutTender, setCheckoutTender] = useState<Tender | null>(null);
-  const [checkoutProduct, setCheckoutProduct] = useState<"TEMPLATE" | "PRO">(
-    "TEMPLATE"
-  );
-  const [selectedWallet, setSelectedWallet] = useState<
-    "YAPPY" | "NEQUI" | "SINPE" | "CARD"
-  >("YAPPY");
-
-  // Estado de copiado
-  const [copiedCode, setCopiedCode] = useState<string | null>(null);
-
-  // Mapear respuesta de FastAPI (/api/licitaciones) al formato de la vista
-  const fetchTendersFromApi = useCallback(async () => {
-    try {
-      const res = await fetch(`${API_BASE}/api/licitaciones`, {
-        cache: "no-store",
-      });
-      if (!res.ok) return;
-      const data = await res.json();
-      if (Array.isArray(data.licitaciones) && data.licitaciones.length > 0) {
-        const mapped: Tender[] = data.licitaciones.map(
-          (item: Record<string, unknown>, idx: number) => ({
-            id: String(
-              (item.id_licitacion as string) || `LIC-${idx + 1}`
-            ),
-            codigo: String(
-              (item.codigo_oficial as string) ||
-                (item.id_licitacion as string) ||
-                `LIC-${idx + 1}`
-            ),
-            pais: (
-              ["PA", "CO", "CR"].includes(item.pais as string)
-                ? item.pais
-                : "PA"
-            ) as "PA" | "CO" | "CR",
-            entidad: String(
-              (item.entidad_compradora as string) || "Entidad Oficial"
-            ),
-            titulo: String(
-              (item.titulo_objeto as string) ||
-                "Proceso de contratación pública"
-            ),
-            categoria: String(
-              (item.categoria_macro as string) || "General"
-            ),
-            montoUSD: Number(item.monto_usd_normalizado || 0),
-            monedaOriginal: String(
-              (item.moneda_original as string) || "USD"
-            ),
-            montoOriginal: Number(
-              item.monto_original ||
-                item.monto_usd_normalizado ||
-                0
-            ),
-            cierre: String(
-              (item.fecha_cierre as string) || "2026-10-30"
-            ).slice(0, 10),
-            horasRestantes: Number(item.horas_restantes || 48),
-            adenda: Boolean(item.tiene_adenda),
-            urlOficial: String(
-              (item.url_pliego as string) ||
-                "https://www.panamacompra.gob.pa"
-            ),
-            clausulasTrampa: Array.isArray(item.alertas_pliego)
-              ? (item.alertas_pliego as string[])
-              : [
-                  "Revisión de requisitos habilitantes financieros e índices de liquidez requerida.",
-                  "Verificar plazo estricto de subsanación de fianza de cumplimiento.",
-                ],
-            precioPlantilla: Number(
-              item.precio_plantilla_usd || 19
-            ),
-          })
-        );
-        setTenders(mapped);
-        setApiConnected(true);
-      }
-    } catch {
-      // Mantiene FALLBACK_TENDERS silenciosamente si el servidor Python no está activo
-      setApiConnected(false);
-    }
-  }, []);
-
+export default function LicitacionesPage() {
   useEffect(() => {
-    fetchTendersFromApi();
-  }, [fetchTendersFromApi]);
-
-  // Sincronización con /api/sync del Enjambre
-  const handleSyncSwarm = async () => {
-    setIsSyncing(true);
-    try {
-      await fetch(`${API_BASE}/api/sync`, { method: "POST" });
-      await fetchTendersFromApi();
-    } catch {
-      // Fallback visual
-    } finally {
-      setTimeout(() => setIsSyncing(false), 500);
-    }
-  };
-
-  // Auditoría conectada a POST /api/auditar
-  const openAuditModal = async (tender: Tender) => {
-    setAuditTender(tender);
-    setDynamicFindings(null);
-    setAuditLoading(true);
-    try {
-      const res = await fetch(`${API_BASE}/api/auditar`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id_licitacion: tender.id,
-          entidad: tender.entidad,
-          objeto: tender.titulo,
-          texto_pliego: tender.clausulasTrampa.join(" "),
-        }),
+    // Definir funciones en window para que los atributos inline onclick/oninput funcionen
+    (window as any).switchView = function(viewName: string) {
+      document.querySelectorAll(".view-content").forEach((view) => {
+        view.classList.remove("active");
       });
-      if (res.ok) {
-        const data = await res.json();
-        if (
-          Array.isArray(data.clausulas_riesgo) &&
-          data.clausulas_riesgo.length > 0
-        ) {
-          setDynamicFindings(data.clausulas_riesgo);
+      document.querySelectorAll(".nav-tab").forEach((tab) => {
+        tab.className =
+          "nav-tab px-3 py-1.5 rounded-md font-medium text-[#888888] hover:text-white transition-colors";
+      });
+      const targetView = document.getElementById(`view-${viewName}`);
+      if (targetView) {
+        targetView.classList.add("active");
+      }
+      const activeTab = document.getElementById(`tab-${viewName}`);
+      if (activeTab) {
+        activeTab.className =
+          "nav-tab px-3 py-1.5 rounded-md font-medium text-white bg-[#1a1a1a] border border-[#333333] transition-colors";
+      }
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    };
+
+    (window as any).filterTemplates = function(country: string) {
+      document.querySelectorAll(".tmpl-pill").forEach((btn) => {
+        btn.className =
+          "tmpl-pill px-3 py-1.5 text-xs font-mono rounded-md text-[#888888] hover:text-white";
+      });
+      const activeBtn = document.getElementById(`btn-tmpl-${country.toLowerCase()}`);
+      if (activeBtn) {
+        activeBtn.className =
+          "tmpl-pill px-3 py-1.5 text-xs font-mono rounded-md bg-[#1a1a1a] text-white font-medium";
+      }
+      const items = document.querySelectorAll(".template-item");
+      items.forEach((item: any) => {
+        if (country === "ALL") {
+          item.style.display = "flex";
+        } else if (item.classList.contains(`tmpl-${country.toLowerCase()}`)) {
+          item.style.display = "flex";
+        } else {
+          item.style.display = "none";
         }
-      }
-    } catch {
-      // Usa tender.clausulasTrampa locales
-    } finally {
-      setAuditLoading(false);
-    }
-  };
+      });
+    };
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedCode(text);
-    setTimeout(() => setCopiedCode(null), 1800);
-  };
-
-  // Atajos de teclado ('/' para buscar, 'Esc' para cerrar modales)
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "/" && document.activeElement?.tagName !== "INPUT") {
-        e.preventDefault();
-        document.getElementById("search-input")?.focus();
+    (window as any).goToStep = function(stepNumber: number) {
+      document.querySelectorAll(".wizard-step").forEach((step) => {
+        step.classList.add("hidden");
+      });
+      const currentStep = document.getElementById(`wizard-step-${stepNumber}`);
+      if (currentStep) {
+        currentStep.classList.remove("hidden");
       }
-      if (e.key === "Escape") {
-        setAuditTender(null);
-        setCheckoutTender(null);
+      const bar = document.getElementById("step-progress-bar");
+      const label = document.getElementById("step-title-label");
+      const perc = document.getElementById("step-percentage");
+      const percentages = [25, 50, 75, 100];
+      const titles = [
+        "PASO 1 DE 4: DATOS LEGALES DE LA EMPRESA",
+        "PASO 2 DE 4: SELECCIÓN DE MACRO-CATEGORÍAS",
+        "PASO 3 DE 4: ACREDITACIÓN LEGAL ACTIVA (RUP/DGCP/SICOP)",
+        "PASO 4 DE 4: INVITACIÓN Y EQUIPO DE LICITACIONES",
+      ];
+      if (bar) bar.style.width = percentages[stepNumber - 1] + "%";
+      if (perc) perc.textContent = percentages[stepNumber - 1] + "% COMPLETADO";
+      if (label) label.textContent = titles[stepNumber - 1];
+    };
+
+    (window as any).updateTaxIdLabel = function() {
+      const select = document.getElementById("country-select-step") as HTMLSelectElement;
+      const label = document.getElementById("tax-id-label");
+      if (!select || !label) return;
+      const country = select.value;
+      if (country === "PA") {
+        label.textContent = "RUC y Dígito Verificador (Panamá)";
+      } else if (country === "CO") {
+        label.textContent = "NIT y Dígito de Verificación (Colombia)";
+      } else if (country === "CR") {
+        label.textContent = "Cédula Jurídica de 10 Dígitos (Costa Rica)";
       }
     };
+
+    (window as any).validateCorporateDomain = function(email: string) {
+      const feedback = document.getElementById("email-validation-feedback");
+      if (!feedback) return;
+      const genericDomains = [
+        "gmail.com",
+        "hotmail.com",
+        "yahoo.com",
+        "outlook.com",
+        "live.com",
+      ];
+      if (!email.includes("@")) {
+        feedback.textContent = "Ingrese un correo completo.";
+        feedback.className = "mt-1.5 text-[11px] font-mono text-[#888888]";
+        return;
+      }
+      const domain = email.split("@")[1].toLowerCase();
+      if (genericDomains.includes(domain)) {
+        feedback.textContent =
+          "⚠️ Se detectó correo genérico (@" +
+          domain +
+          "). Ingrese un correo con dominio propio de su empresa.";
+        feedback.className = "mt-1.5 text-[11px] font-mono text-[#f5a623]";
+      } else if (domain.includes(".")) {
+        feedback.textContent = "✓ Dominio corporativo verificado (@" + domain + ").";
+        feedback.className = "mt-1.5 text-[11px] font-mono text-[#00e599]";
+      }
+    };
+
+    (window as any).openModal = function(modalId: string) {
+      const modal = document.getElementById(modalId);
+      if (modal) modal.classList.remove("hidden");
+    };
+
+    (window as any).closeModal = function(modalId: string) {
+      const modal = document.getElementById(modalId);
+      if (modal) modal.classList.add("hidden");
+    };
+
+    const checkHashView = () => {
+      const hash = window.location.hash.replace("#", "");
+      if (
+        hash &&
+        [
+          "explorer",
+          "ai-diagnostic",
+          "templates",
+          "kanban",
+          "notifications",
+          "pricing",
+          "onboarding",
+        ].includes(hash)
+      ) {
+        (window as any).switchView(hash);
+      }
+    };
+    checkHashView();
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        (window as any).switchView("explorer");
+        const input = document.getElementById("searchInput");
+        if (input) input.focus();
+      }
+    };
+
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    window.addEventListener("hashchange", checkHashView);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("hashchange", checkHashView);
+    };
   }, []);
 
-  const filtered = useMemo(() => {
-    return tenders
-      .filter((item) => {
-        const matchCountry =
-          countryFilter === "ALL" || item.pais === countryFilter;
-        const matchSearch =
-          search.trim() === "" ||
-          item.titulo.toLowerCase().includes(search.toLowerCase()) ||
-          item.entidad.toLowerCase().includes(search.toLowerCase()) ||
-          item.codigo.toLowerCase().includes(search.toLowerCase()) ||
-          item.categoria.toLowerCase().includes(search.toLowerCase());
-        return matchCountry && matchSearch;
-      })
-      .sort((a, b) => {
-        if (sortBy === "BUDGET") return b.montoUSD - a.montoUSD;
-        if (sortBy === "DEADLINE") return a.horasRestantes - b.horasRestantes;
-        return 0;
-      });
-  }, [tenders, search, countryFilter, sortBy]);
-
-  const totalUSD = useMemo(() => {
-    return filtered.reduce((acc, curr) => acc + curr.montoUSD, 0);
-  }, [filtered]);
-
   return (
-    <div className="min-h-screen bg-[#000000] text-[#EDEDED] font-sans">
-      {/* =====================================================================
-          1. BARRA DE NAVEGACIÓN SUPERIOR (56px, BORDE 1PX, SIN GRADIENTES)
-      ===================================================================== */}
-      <header className="sticky top-0 z-30 h-14 border-b border-white/[0.08] bg-[#000000]/85 backdrop-blur-md">
-        <div className="max-w-[1200px] mx-auto h-full px-6 flex items-center justify-between border-x border-white/[0.08]">
-          {/* Marca estilo Vercel */}
-          <div className="flex items-center space-x-3">
-            <a
-              href="/"
-              className="flex items-center space-x-2.5 text-[#EDEDED] hover:opacity-80 transition-opacity"
-            >
-              {/* Triángulo Geométrico Puro */}
-              <svg
-                viewBox="0 0 76 65"
-                fill="currentColor"
-                className="w-4 h-4 text-[#EDEDED]"
-              >
-                <path d="M37.5274 0L75.0548 65H0L37.5274 0Z" />
-              </svg>
-              <span className="text-sm font-semibold tracking-[-0.02em]">
-                Lici S.A.
-              </span>
-            </a>
-
-            <span className="text-white/20 font-light select-none">/</span>
-            <div className="flex items-center space-x-2 font-mono text-[11px] text-[#888888]">
-              <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#10B981]" />
-              <span>PA · CO · CR</span>
-              <span className="hidden sm:inline text-[#555555]">
-                {apiConnected ? "SWARM_API_ONLINE" : "STATIC_REPLICA"}
-              </span>
-            </div>
-          </div>
-
-          {/* Controles Superiores */}
-          <div className="flex items-center space-x-2.5">
-            <button
-              onClick={handleSyncSwarm}
-              disabled={isSyncing}
-              className="hidden sm:inline-flex items-center space-x-1.5 h-8 px-3 rounded-[6px] bg-[#0A0A0A] border border-white/[0.12] hover:border-white/[0.25] text-xs font-mono text-[#A1A1A1] hover:text-[#EDEDED] transition-colors"
-            >
-              <RefreshCw
-                className={`w-3 h-3 ${isSyncing ? "animate-spin" : ""}`}
-              />
-              <span>{isSyncing ? "SYNCING..." : "SYNC_NODES"}</span>
-            </button>
-
-            <a
-              href={`https://wa.me/${WHATSAPP_NUMBER}?text=Hola,%20quisiera%20consultar%20sobre%20el%20monitoreo%20de%20licitaciones%20de%20Lici%20S.A.`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hidden md:inline-flex items-center space-x-1.5 h-8 px-3 rounded-[6px] bg-[#0A0A0A] border border-white/[0.12] hover:border-white/[0.25] text-xs font-mono text-[#A1A1A1] hover:text-[#EDEDED] transition-colors"
-            >
-              <span>WA: {WHATSAPP_DISPLAY}</span>
-              <ArrowUpRight className="w-3 h-3" />
-            </a>
-
-            <button
-              onClick={() => {
-                setCheckoutProduct("PRO");
-                setCheckoutTender(tenders[0] || FALLBACK_TENDERS[0]);
-              }}
-              className="h-8 px-3.5 rounded-[6px] bg-[#EDEDED] hover:bg-white text-[#000000] font-medium text-xs tracking-[-0.01em] transition-colors"
-            >
-              Plan Pro · $29/mes
-            </button>
-          </div>
-        </div>
-      </header>
-
-      {/* =====================================================================
-          2. CONTENEDOR ARQUITECTÓNICO CENTRAL (1200PX, BORDES DE 1PX)
-      ===================================================================== */}
-      <div className="max-w-[1200px] mx-auto border-x border-white/[0.08] relative">
-        {/* HERO SECTION CON CUADRÍCULA ESTRUCTURAL */}
-        <section className="relative border-b border-white/[0.08]">
-          {/* Crosshairs en las 4 esquinas del Hero */}
-          <Crosshair className="absolute -top-[8px] -left-[8px]" />
-          <Crosshair className="absolute -top-[8px] -right-[8px]" />
-          <Crosshair className="absolute -bottom-[8px] -left-[8px]" />
-          <Crosshair className="absolute -bottom-[8px] -right-[8px]" />
-
-          <div className="grid grid-cols-1 lg:grid-cols-12 divide-y lg:divide-y-0 lg:divide-x divide-white/[0.08]">
-            {/* Columna Izquierda: Propuesta de Valor */}
-            <div className="lg:col-span-8 p-6 sm:p-10 lg:p-12 flex flex-col justify-between space-y-6">
-              <div className="space-y-4">
-                <div className="inline-flex items-center space-x-2 px-2.5 py-1 rounded-[4px] border border-white/[0.12] bg-[#0A0A0A] font-mono text-[11px] text-[#A1A1A1]">
-                  <Terminal className="w-3 h-3 text-[#EDEDED]" />
-                  <span>PANAMACOMPRA · SECOP II · SICOP</span>
-                </div>
-
-                <h1 className="text-3xl sm:text-4xl lg:text-[44px] font-semibold tracking-[-0.04em] text-[#EDEDED] leading-[1.08]">
-                  Inteligencia de licitaciones públicas.{" "}
-                  <span className="text-[#888888]">
-                    Cero descalificaciones por letra chica.
-                  </span>
-                </h1>
-
-                <p className="text-[#888888] text-sm sm:text-[15px] max-w-2xl leading-relaxed">
-                  Ingesta automatizada de pliegos estatales en Panamá, Colombia
-                  y Costa Rica. Detección determinista de cláusulas excluyentes,
-                  índices financieros y matrices de cumplimiento en Excel listas
-                  para presentar oferta.
-                </p>
-              </div>
-
-              {/* Telemetría de Nodos en Vivo */}
-              <div className="pt-2 flex flex-wrap items-center gap-6 font-mono text-xs text-[#888888]">
-                <div className="flex items-center space-x-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#10B981]" />
-                  <span>PA_DGCP: 99.98%</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#10B981]" />
-                  <span>CO_SECOP_II: 99.95%</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#10B981]" />
-                  <span>CR_SICOP: 99.91%</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Columna Derecha: Métrica de Volumen y Estado */}
-            <div className="lg:col-span-4 flex flex-col justify-between divide-y divide-white/[0.08] bg-[#050505]">
-              <div className="p-6 sm:p-8 space-y-2">
-                <span className="font-mono text-[11px] uppercase tracking-wider text-[#888888] block">
-                  Volumen Oficial Monitoreado
-                </span>
-                <div className="text-3xl sm:text-4xl font-semibold font-mono tracking-tight tabular-nums text-[#EDEDED]">
-                  $
-                  {totalUSD.toLocaleString("en-US", {
-                    minimumFractionDigits: 0,
-                  })}
-                  <span className="text-xs text-[#888888] ml-1.5 font-normal">
-                    USD
-                  </span>
-                </div>
-                <p className="text-xs text-[#666666]">
-                  Suma normalizada a dólares estadounidenses según tasa oficial
-                  del día.
-                </p>
-              </div>
-
-              <div className="p-6 sm:p-8 space-y-3 font-mono text-xs">
-                <div className="flex items-center justify-between text-[#888888]">
-                  <span>PROCESOS_ACTIVOS</span>
-                  <span className="text-[#EDEDED] tabular-nums">
-                    {filtered.length} VERIFICADOS
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-[#888888]">
-                  <span>MOTOR_AUDITORIA</span>
-                  <span className="text-[#EDEDED]">GATEKEEPER_V1</span>
-                </div>
-                <div className="flex items-center justify-between text-[#888888]">
-                  <span>TIEMPO_ENTREGA_EXCEL</span>
-                  <span className="text-[#10B981]">&lt; 5 MIN</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* ===================================================================
-            3. BARRA DE COMANDOS Y FILTROS (ESTILO VERCEL DEPLOYMENTS)
-        =================================================================== */}
-        <section className="border-b border-white/[0.08] bg-[#050505]">
-          <div className="grid grid-cols-1 lg:grid-cols-12 divide-y lg:divide-y-0 lg:divide-x divide-white/[0.08]">
-            {/* Input de Búsqueda */}
-            <div className="lg:col-span-6 relative flex items-center px-4 h-12">
-              <Search className="w-4 h-4 text-[#666666] mr-3 shrink-0" />
-              <input
-                id="search-input"
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Filtrar por entidad (MINSA, INVIAS, CCSS, ACP), código o palabra clave..."
-                className="w-full bg-transparent text-xs sm:text-sm text-[#EDEDED] placeholder-[#666666] focus:outline-none"
-              />
-              {search ? (
-                <button
-                  onClick={() => setSearch("")}
-                  className="p-1 text-[#666666] hover:text-[#EDEDED]"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              ) : (
-                <kbd className="hidden sm:inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-mono text-[#888888] bg-[#111111] border border-white/[0.12] rounded-[4px]">
-                  /
-                </kbd>
-              )}
-            </div>
-
-            {/* Selector de Jurisdicción (Sin Emojis) */}
-            <div className="lg:col-span-4 flex items-center px-3 h-12 space-x-1 overflow-x-auto">
-              {(
-                [
-                  { id: "ALL", label: "ALL" },
-                  { id: "PA", label: "PA · DGCP/ACP" },
-                  { id: "CO", label: "CO · SECOP II" },
-                  { id: "CR", label: "CR · SICOP" },
-                ] as const
-              ).map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setCountryFilter(tab.id)}
-                  className={`h-7 px-2.5 rounded-[4px] font-mono text-[11px] whitespace-nowrap transition-colors ${
-                    countryFilter === tab.id
-                      ? "bg-[#EDEDED] text-[#000000] font-medium"
-                      : "text-[#888888] hover:text-[#EDEDED] hover:bg-white/[0.04]"
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Ordenamiento */}
-            <div className="lg:col-span-2 flex items-center justify-between px-3 h-12 space-x-1">
-              <SlidersHorizontal className="w-3.5 h-3.5 text-[#666666] shrink-0 hidden xl:block ml-1" />
-              <button
-                onClick={() =>
-                  setSortBy(sortBy === "BUDGET" ? "DEFAULT" : "BUDGET")
-                }
-                className={`flex-1 h-7 px-2 rounded-[4px] font-mono text-[11px] transition-colors ${
-                  sortBy === "BUDGET"
-                    ? "bg-white/[0.12] text-[#EDEDED] border border-white/[0.2]"
-                    : "text-[#888888] hover:text-[#EDEDED]"
-                }`}
-              >
-                $ MONTO
-              </button>
-              <button
-                onClick={() =>
-                  setSortBy(sortBy === "DEADLINE" ? "DEFAULT" : "DEADLINE")
-                }
-                className={`flex-1 h-7 px-2 rounded-[4px] font-mono text-[11px] transition-colors ${
-                  sortBy === "DEADLINE"
-                    ? "bg-white/[0.12] text-[#EDEDED] border border-white/[0.2]"
-                    : "text-[#888888] hover:text-[#EDEDED]"
-                }`}
-              >
-                CIERRE
-              </button>
-            </div>
-          </div>
-        </section>
-
-        {/* ===================================================================
-            4. MATRIZ DE LICITACIONES (CELDAS COMPARTIDAS DE 1PX)
-        =================================================================== */}
-        <main className="divide-y divide-white/[0.08]">
-          {filtered.length === 0 ? (
-            <div className="p-16 text-center space-y-3">
-              <p className="font-mono text-xs text-[#888888]">
-                NO_MATCHING_TENDERS_FOUND
-              </p>
-              <button
-                onClick={() => {
-                  setSearch("");
-                  setCountryFilter("ALL");
-                }}
-                className="h-8 px-3 rounded-[6px] border border-white/[0.14] text-xs font-mono text-[#EDEDED] hover:bg-white/[0.05]"
-              >
-                RESTABLECER_FILTROS
-              </button>
-            </div>
-          ) : (
-            filtered.map((item) => (
-              <article
-                key={item.id}
-                className="p-6 sm:p-8 bg-[#000000] hover:bg-[#080808] transition-colors flex flex-col lg:flex-row lg:items-center justify-between gap-6"
-              >
-                {/* Bloque Izquierdo: Metadatos Técnicos y Objeto */}
-                <div className="space-y-3 max-w-3xl">
-                  <div className="flex flex-wrap items-center gap-2 font-mono text-[11px]">
-                    {/* Estado Semántico */}
-                    <span
-                      className={`inline-flex items-center space-x-1.5 px-2 py-0.5 rounded-[4px] border ${
-                        item.adenda
-                          ? "border-[#F59E0B]/30 bg-[#F59E0B]/10 text-[#F59E0B]"
-                          : "border-[#10B981]/30 bg-[#10B981]/10 text-[#10B981]"
-                      }`}
-                    >
-                      <span
-                        className={`w-1.5 h-1.5 rounded-full ${
-                          item.adenda ? "bg-[#F59E0B]" : "bg-[#10B981]"
-                        }`}
-                      />
-                      <span>
-                        {item.adenda ? "ADENDA_ACTIVA" : "ABIERTA"}
-                      </span>
-                    </span>
-
-                    {/* Código ISO País */}
-                    <span className="px-2 py-0.5 rounded-[4px] border border-white/[0.12] bg-[#0A0A0A] text-[#EDEDED]">
-                      {item.pais}
-                    </span>
-
-                    {/* Código Oficial Copiable */}
-                    <button
-                      onClick={() => copyToClipboard(item.codigo)}
-                      title="Copiar código del proceso"
-                      className="inline-flex items-center space-x-1.5 px-2 py-0.5 rounded-[4px] border border-white/[0.08] bg-[#0A0A0A] hover:border-white/[0.24] text-[#888888] hover:text-[#EDEDED] transition-colors"
-                    >
-                      <span>{item.codigo}</span>
-                      {copiedCode === item.codigo ? (
-                        <Check className="w-3 h-3 text-[#10B981]" />
-                      ) : (
-                        <Copy className="w-3 h-3" />
-                      )}
-                    </button>
-
-                    {/* Ventana de Cierre */}
-                    <span className="text-[#888888] tabular-nums">
-                      CIERRE: {item.cierre} ({item.horasRestantes}h)
-                    </span>
-                  </div>
-
-                  {/* Título de la Licitación */}
-                  <h2 className="text-base sm:text-[17px] font-medium tracking-[-0.01em] text-[#EDEDED] leading-snug">
-                    {item.titulo}
-                  </h2>
-
-                  {/* Entidad y Rubro */}
-                  <div className="flex flex-wrap items-center gap-2 text-xs text-[#888888]">
-                    <span className="text-[#A1A1A1] font-medium">
-                      {item.entidad}
-                    </span>
-                    <span className="text-white/20">/</span>
-                    <span>{item.categoria}</span>
-                    <span className="text-white/20">/</span>
-                    <span className="font-mono text-[11px] text-[#F59E0B]">
-                      {item.clausulasTrampa.length} cláusulas críticas
-                      detectadas
-                    </span>
-                  </div>
-                </div>
-
-                {/* Bloque Derecho: Presupuesto Tabular y Controles */}
-                <div className="flex flex-col sm:flex-row lg:flex-col xl:flex-row items-start sm:items-center lg:items-end xl:items-center gap-5 shrink-0 pt-4 lg:pt-0 border-t lg:border-t-0 border-white/[0.08]">
-                  <div className="text-left lg:text-right">
-                    <div className="text-xl font-semibold font-mono tracking-tight tabular-nums text-[#EDEDED]">
-                      ${item.montoUSD.toLocaleString("en-US")}
-                      <span className="text-xs text-[#888888] font-normal ml-1">
-                        USD
-                      </span>
-                    </div>
-                    {item.monedaOriginal !== "USD" && (
-                      <div className="font-mono text-[11px] text-[#666666] tabular-nums">
-                        {item.montoOriginal.toLocaleString("en-US")}{" "}
-                        {item.monedaOriginal}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Botones de Acción Geist */}
-                  <div className="flex items-center space-x-2">
-                    <button
-                      onClick={() => openAuditModal(item)}
-                      className="h-9 px-3.5 rounded-[6px] bg-[#0A0A0A] border border-white/[0.14] hover:border-white/[0.28] hover:bg-[#141414] text-xs font-medium text-[#EDEDED] flex items-center space-x-1.5 transition-colors"
-                    >
-                      <AlertTriangle className="w-3.5 h-3.5 text-[#F59E0B]" />
-                      <span>Auditar Pliego</span>
-                    </button>
-
-                    <button
-                      onClick={() => {
-                        setCheckoutProduct("TEMPLATE");
-                        setCheckoutTender(item);
-                      }}
-                      className="h-9 px-3.5 rounded-[6px] bg-[#EDEDED] hover:bg-white text-[#000000] text-xs font-medium flex items-center space-x-1.5 transition-colors"
-                    >
-                      <FileSpreadsheet className="w-3.5 h-3.5" />
-                      <span>Matriz Excel · ${item.precioPlantilla}</span>
-                    </button>
-
-                    <a
-                      href={item.urlOficial}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      title="Abrir portal estatal oficial"
-                      className="h-9 w-9 rounded-[6px] bg-[#0A0A0A] border border-white/[0.14] hover:border-white/[0.28] text-[#888888] hover:text-[#EDEDED] flex items-center justify-center transition-colors"
-                    >
-                      <ArrowUpRight className="w-4 h-4" />
-                    </a>
-                  </div>
-                </div>
-              </article>
-            ))
-          )}
-        </main>
-
-        {/* ===================================================================
-            5. BENTO GRID TÉCNICO DE 3 CELDAS (ARQUITECTURA DEL ENJAMBRE)
-        =================================================================== */}
-        <section className="border-t border-white/[0.08] relative">
-          <Crosshair className="absolute -top-[8px] -left-[8px]" />
-          <Crosshair className="absolute -top-[8px] -right-[8px]" />
-
-          <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-white/[0.08]">
-            <div className="p-6 sm:p-8 space-y-3 bg-[#030303]">
-              <span className="font-mono text-[11px] text-[#888888] block">
-                01 / INGESTA_MULTIPAIS
-              </span>
-              <h3 className="text-sm font-semibold text-[#EDEDED]">
-                Normalización Financiera y UNSPSC
-              </h3>
-              <p className="text-xs text-[#888888] leading-relaxed">
-                Extracción directa desde PanamáCompra (DGCP y ACP), SECOP II
-                (Colombia) y SICOP (Costa Rica) con conversión cambiaria
-                automatizada a USD.
-              </p>
-            </div>
-
-            <div className="p-6 sm:p-8 space-y-3 bg-[#030303]">
-              <span className="font-mono text-[11px] text-[#888888] block">
-                02 / AUDITORIA_COPILOT_GEMS
-              </span>
-              <h3 className="text-sm font-semibold text-[#EDEDED]">
-                Detección de Cláusulas Trampa
-              </h3>
-              <p className="text-xs text-[#888888] leading-relaxed">
-                Identificación anticipada de requisitos excluyentes: apostillas
-                consulares, tiempos de subsanación de fianzas e índices RUP de
-                liquidez y endeudamiento.
-              </p>
-            </div>
-
-            <div className="p-6 sm:p-8 space-y-3 bg-[#030303]">
-              <span className="font-mono text-[11px] text-[#888888] block">
-                03 / MATRICES_EJECUTABLES
-              </span>
-              <h3 className="text-sm font-semibold text-[#EDEDED]">
-                Plantillas de Cumplimiento en Excel
-              </h3>
-              <p className="text-xs text-[#888888] leading-relaxed">
-                Desglose técnico de requisitos obligatorios, formularios de
-                cotización y calculadora de riesgos financieros lista para
-                descarga inmediata.
-              </p>
-            </div>
-          </div>
-        </section>
-      </div>
-
-      {/* =====================================================================
-          6. MODAL DE AUDITORÍA DE PLIEGO (CONECTADO A /api/auditar)
-      ===================================================================== */}
-      {auditTender && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#0A0A0A] border border-white/[0.14] max-w-xl w-full rounded-[8px] overflow-hidden shadow-2xl">
-            <div className="px-6 py-4 border-b border-white/[0.08] flex items-start justify-between">
-              <div className="space-y-1">
-                <div className="flex items-center space-x-2 font-mono text-[11px] text-[#F59E0B]">
-                  <AlertTriangle className="w-3.5 h-3.5" />
-                  <span>DICTAMEN_DE_ADMISIBILIDAD</span>
-                </div>
-                <h3 className="text-sm font-semibold text-[#EDEDED] leading-snug">
-                  {auditTender.titulo}
-                </h3>
-                <p className="font-mono text-[11px] text-[#888888]">
-                  {auditTender.entidad} · {auditTender.codigo}
-                </p>
-              </div>
-              <button
-                onClick={() => setAuditTender(null)}
-                className="p-1 text-[#888888] hover:text-[#EDEDED]"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="p-6 space-y-4">
-              <div className="font-mono text-[11px] text-[#888888] uppercase">
-                Hallazgos críticos en el pliego de cargos:
-              </div>
-
-              {auditLoading ? (
-                <div className="p-4 border border-white/[0.08] bg-[#050505] font-mono text-xs text-[#888888]">
-                  Ejecutando CopilotoAuditorPro sobre {auditTender.codigo}...
-                </div>
-              ) : (
-                <div className="space-y-2.5">
-                  {(dynamicFindings || auditTender.clausulasTrampa).map(
-                    (clausula, idx) => (
-                      <div
-                        key={idx}
-                        className="p-3.5 rounded-[6px] border border-[#F59E0B]/25 bg-[#F59E0B]/[0.05] font-mono text-xs text-[#EDEDED] leading-relaxed flex items-start space-x-3"
-                      >
-                        <span className="text-[#F59E0B] select-none">
-                          0{idx + 1}
-                        </span>
-                        <span className="font-sans text-xs text-[#D4D4D4]">
-                          {clausula}
-                        </span>
-                      </div>
-                    )
-                  )}
-                </div>
-              )}
-            </div>
-
-            <div className="px-6 py-4 border-t border-white/[0.08] bg-[#050505] flex flex-col sm:flex-row items-center justify-between gap-3">
-              <a
-                href={`https://wa.me/${WHATSAPP_NUMBER}?text=Hola,%20tengo%20dudas%20t%C3%A9cnicas%20con%20el%20pliego%20${encodeURIComponent(auditTender.codigo)}%20de%20${encodeURIComponent(auditTender.entidad)}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full sm:w-auto h-9 px-4 rounded-[6px] bg-[#0A0A0A] border border-white/[0.14] hover:border-white/[0.28] text-xs font-medium text-[#EDEDED] flex items-center justify-center space-x-2 transition-colors"
-              >
-                <span>Consultar Analista ({WHATSAPP_DISPLAY})</span>
-                <ArrowUpRight className="w-3.5 h-3.5" />
-              </a>
-
-              <button
-                onClick={() => {
-                  const target = auditTender;
-                  setAuditTender(null);
-                  setCheckoutProduct("TEMPLATE");
-                  setCheckoutTender(target);
-                }}
-                className="w-full sm:w-auto h-9 px-4 rounded-[6px] bg-[#EDEDED] hover:bg-white text-[#000000] text-xs font-medium transition-colors"
-              >
-                Adquirir Matriz Excel · ${auditTender.precioPlantilla} USD
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* =====================================================================
-          7. MODAL DE CHECKOUT (YAPPY / NEQUI / SINPE / TARJETA)
-      ===================================================================== */}
-      {checkoutTender && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#0A0A0A] border border-white/[0.14] max-w-lg w-full rounded-[8px] overflow-hidden shadow-2xl">
-            <div className="px-6 py-4 border-b border-white/[0.08] flex items-center justify-between">
-              <div>
-                <span className="font-mono text-[11px] text-[#10B981] block">
-                  ENTREGA_INMEDIATA
-                </span>
-                <h3 className="text-sm font-semibold text-[#EDEDED] mt-0.5">
-                  {checkoutProduct === "TEMPLATE"
-                    ? `Matriz de Cumplimiento · ${checkoutTender.codigo}`
-                    : "Suscripción Plan Pro · Monitoreo Ilimitado"}
-                </h3>
-              </div>
-              <button
-                onClick={() => setCheckoutTender(null)}
-                className="p-1 text-[#888888] hover:text-[#EDEDED]"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="p-6 space-y-5 text-xs">
-              <div className="p-4 rounded-[6px] border border-white/[0.08] bg-[#050505] flex items-center justify-between">
-                <span className="text-[#888888] font-mono">TOTAL_ORDEN</span>
-                <span className="text-xl font-semibold font-mono tabular-nums text-[#EDEDED]">
-                  $
-                  {checkoutProduct === "TEMPLATE"
-                    ? checkoutTender.precioPlantilla
-                    : 29}
-                  .00 USD
-                </span>
-              </div>
-
-              {/* Selector de Pasarela Monocromático */}
-              <div className="space-y-2">
-                <span className="font-mono text-[11px] text-[#888888] uppercase block">
-                  Método de pago regional:
-                </span>
-                <div className="grid grid-cols-4 gap-2">
-                  {(
-                    [
-                      { id: "YAPPY", label: "PA · Yappy" },
-                      { id: "NEQUI", label: "CO · Nequi" },
-                      { id: "SINPE", label: "CR · SINPE" },
-                      { id: "CARD", label: "Tarjeta" },
-                    ] as const
-                  ).map((w) => (
-                    <button
-                      key={w.id}
-                      onClick={() => setSelectedWallet(w.id)}
-                      className={`h-9 rounded-[6px] font-mono text-[11px] border transition-colors ${
-                        selectedWallet === w.id
-                          ? "border-[#EDEDED] bg-[#EDEDED] text-[#000000] font-medium"
-                          : "border-white/[0.12] bg-[#050505] text-[#888888] hover:text-[#EDEDED]"
-                      }`}
-                    >
-                      {w.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Instrucciones Técnicas */}
-              <div className="p-4 rounded-[6px] border border-white/[0.08] bg-[#050505] space-y-2">
-                {selectedWallet === "YAPPY" && (
-                  <>
-                    <div className="text-[#888888] font-mono text-[11px]">
-                      TRANSFERENCIA YAPPY (BANCO GENERAL PANAMÁ):
-                    </div>
-                    <div className="flex items-center justify-between pt-1">
-                      <span className="font-mono text-sm font-semibold text-[#EDEDED]">
-                        {WHATSAPP_DISPLAY}
-                      </span>
-                      <button
-                        onClick={() => copyToClipboard("65787219")}
-                        className="h-7 px-2.5 rounded-[4px] border border-white/[0.14] bg-[#111111] hover:bg-[#1A1A1A] font-mono text-[11px] text-[#EDEDED] flex items-center space-x-1.5"
-                      >
-                        {copiedCode === "65787219" ? (
-                          <Check className="w-3 h-3 text-[#10B981]" />
-                        ) : (
-                          <Copy className="w-3 h-3" />
-                        )}
-                        <span>Copiar</span>
-                      </button>
-                    </div>
-                  </>
-                )}
-
-                {selectedWallet === "NEQUI" && (
-                  <p className="text-[#A1A1A1] leading-relaxed">
-                    Al confirmar se genera el QR de Nequi / Bancolombia por
-                    WhatsApp con liquidación automática en COP.
-                  </p>
-                )}
-
-                {selectedWallet === "SINPE" && (
-                  <p className="text-[#A1A1A1] leading-relaxed">
-                    Al confirmar recibirás el número SINPE Móvil verificado para
-                    transferencia inmediata en Costa Rica.
-                  </p>
-                )}
-
-                {selectedWallet === "CARD" && (
-                  <p className="text-[#A1A1A1] leading-relaxed">
-                    Se enviará enlace directo de pago con tarjeta internacional
-                    (Visa / Mastercard) y entrega inmediata del Excel.
-                  </p>
-                )}
-              </div>
-
-              <a
-                href={`https://wa.me/${WHATSAPP_NUMBER}?text=Hola,%20deseo%20adquirir%20${
-                  checkoutProduct === "TEMPLATE"
-                    ? `la%20Matriz%20de%20Cumplimiento%20para%20la%20licitaci%C3%B3n%20${encodeURIComponent(
-                        checkoutTender.codigo
-                      )}%20(${checkoutTender.pais})%20por%20$${checkoutTender.precioPlantilla}%20USD`
-                    : "el%20Plan%20Pro%20mensual%20($29%20USD)"
-                }%20mediante%20${selectedWallet}.`}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => {
-                  // Registra la orden en FastAPI (/api/checkout) si está activo
-                  fetch(`${API_BASE}/api/checkout`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      id_licitacion: checkoutTender.id,
-                      codigo_oficial: checkoutTender.codigo,
-                      tipo_producto:
-                        checkoutProduct === "TEMPLATE"
-                          ? "TEMPLATE"
-                          : "PRO_PLAN",
-                      metodo_pago: selectedWallet,
-                      monto_usd:
-                        checkoutProduct === "TEMPLATE"
-                          ? checkoutTender.precioPlantilla
-                          : 29,
-                      whatsapp: WHATSAPP_NUMBER,
-                      email: "cliente@licisa.com",
-                    }),
-                  }).catch(() => {});
-                  setCheckoutTender(null);
-                }}
-                className="w-full h-10 rounded-[6px] bg-[#EDEDED] hover:bg-white text-[#000000] font-medium text-xs flex items-center justify-center space-x-2 transition-colors"
-              >
-                <span>Confirmar Orden en WhatsApp ({WHATSAPP_DISPLAY})</span>
-                <ArrowUpRight className="w-3.5 h-3.5" />
-              </a>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* =====================================================================
-          8. FOOTER MINIMALISTA DE PRECISIÓN
-      ===================================================================== */}
-      <footer className="border-t border-white/[0.08] bg-[#000000] text-xs text-[#666666]">
-        <div className="max-w-[1200px] mx-auto px-6 py-8 border-x border-white/[0.08] flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center space-x-3">
-            <span className="text-[#EDEDED] font-medium">Lici S.A.</span>
-            <span>/</span>
-            <span className="font-mono text-[11px]">
-              PANAMA · COLOMBIA · COSTA RICA
-            </span>
-          </div>
-
-          <div className="flex items-center space-x-4 font-mono text-[11px]">
-            <a
-              href={`https://wa.me/${WHATSAPP_NUMBER}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[#888888] hover:text-[#EDEDED] transition-colors"
-            >
-              SOPORTE: {WHATSAPP_DISPLAY}
-            </a>
-          </div>
-        </div>
-      </footer>
-    </div>
+    <div
+      dangerouslySetInnerHTML={{
+        __html: "\n\n  <!-- ========================================================================= -->\n  <!-- 0. TICKER DE TELEMETR\u00cdA EN VIVO (GLOBAL HEADER TICKER)                   -->\n  <!-- ========================================================================= -->\n  <div class=\"w-full bg-[#0a0a0a] border-b border-[#1f1f1f] text-xs font-mono py-1.5 px-4 overflow-x-auto whitespace-nowrap\">\n    <div class=\"max-w-[1440px] mx-auto flex items-center justify-between gap-6 text-[#888888]\">\n      <div class=\"flex items-center gap-6\">\n        <div class=\"flex items-center gap-2\">\n          <span class=\"inline-block w-2 h-2 rounded-full bg-[#00e599] animate-pulse\"></span>\n          <span class=\"text-white font-medium\">SISTEMA ACTIVO</span>\n          <span class=\"text-[#444444]\">|</span>\n          <span>PIPELINE TOTAL: <span class=\"text-white font-semibold\">$184,920,400 USD</span></span>\n        </div>\n        <div class=\"hidden lg:flex items-center gap-4\">\n          <span class=\"text-[#666666]\">\ud83c\uddf5\ud83c\udde6 DGCP (Panam\u00e1Compra): 42 licitaciones indexadas hoy ($18.4M)</span>\n          <span class=\"text-[#444444]\">\u2022</span>\n          <span class=\"text-[#666666]\">\ud83c\udde8\ud83c\uddf4 SECOP II: 114 pliegos tipo actualizados ($64.2M)</span>\n          <span class=\"text-[#444444]\">\u2022</span>\n          <span class=\"text-[#666666]\">\ud83c\udde8\ud83c\uddf7 SICOP (Ley 9986): 28 aperturas en 48h (\u20a14,280M CRC)</span>\n        </div>\n      </div>\n      <div class=\"flex items-center gap-3\">\n        <span class=\"text-xs bg-[#f5a623]/10 text-[#f5a623] border border-[#f5a623]/30 px-2 py-0.5 rounded-full font-mono\">\n          \u26a1 14 Adendas Cr\u00edticas Detectadas\n        </span>\n      </div>\n    </div>\n  </div>\n\n  <!-- ========================================================================= -->\n  <!-- BARRA DE NAVEGACI\u00d3N PRINCIPAL (GEIST SHELL)                             -->\n  <!-- ========================================================================= -->\n  <header class=\"sticky top-0 z-50 w-full bg-black/85 backdrop-blur-md border-b border-[#1f1f1f]\">\n    <div class=\"max-w-[1440px] mx-auto px-4 sm:px-6 h-14 flex items-center justify-between\">\n      \n      <!-- Marca & Selector de Secci\u00f3n -->\n      <div class=\"flex items-center gap-6\">\n        <a href=\"#\" class=\"flex items-center gap-2 text-white font-semibold tracking-tight text-sm hover:opacity-90\">\n          <svg height=\"20\" viewBox=\"0 0 115 100\" fill=\"currentColor\">\n            <path d=\"M57.5 0L115 100H0L57.5 0z\" />\n          </svg>\n          <span class=\"tracking-tighter font-mono text-base\">LICITA<span class=\"text-[#888888]\">.LAT</span></span>\n        </a>\n\n        <!-- Navegaci\u00f3n de Vistas Principales -->\n        <nav class=\"hidden md:flex items-center gap-1 text-xs\">\n          <button onclick=\"switchView('explorer')\" id=\"tab-explorer\" class=\"nav-tab px-3 py-1.5 rounded-md font-medium text-white bg-[#1a1a1a] border border-[#333333] transition-colors\">\n            Explorador P\u00fablico\n          </button>\n          <button onclick=\"switchView('ai-diagnostic')\" id=\"tab-ai-diagnostic\" class=\"nav-tab px-3 py-1.5 rounded-md font-medium text-[#888888] hover:text-white transition-colors\">\n            Diagn\u00f3stico IA\n          </button>\n          <button onclick=\"switchView('templates')\" id=\"tab-templates\" class=\"nav-tab px-3 py-1.5 rounded-md font-medium text-[#888888] hover:text-white transition-colors\">\n            Plantillas Oficiales\n          </button>\n          <button onclick=\"switchView('kanban')\" id=\"tab-kanban\" class=\"nav-tab px-3 py-1.5 rounded-md font-medium text-[#888888] hover:text-white transition-colors\">\n            Kanban & Auditor\u00eda\n          </button>\n          <button onclick=\"switchView('notifications')\" id=\"tab-notifications\" class=\"nav-tab px-3 py-1.5 rounded-md font-medium text-[#888888] hover:text-white transition-colors\">\n            Notificaciones\n          </button>\n          <button onclick=\"switchView('pricing')\" id=\"tab-pricing\" class=\"nav-tab px-3 py-1.5 rounded-md font-medium text-[#888888] hover:text-white transition-colors\">\n            Planes & Facturaci\u00f3n\n          </button>\n        </nav>\n      </div>\n\n      <!-- Accesos R\u00e1pidos & Auth -->\n      <div class=\"flex items-center gap-2.5\">\n        <button onclick=\"switchView('onboarding')\" class=\"hidden sm:inline-flex items-center text-xs font-mono text-[#888888] hover:text-white border border-[#2e2e2e] hover:border-[#444444] px-2.5 py-1 rounded bg-[#0a0a0a]\">\n          Onboarding Demo (4 Pasos)\n        </button>\n        <button onclick=\"openModal('auth-modal')\" class=\"inline-flex items-center justify-center h-8 px-3 text-xs font-medium text-black bg-white rounded-md hover:bg-[#eaeaea] transition-colors\">\n          Acceso Empresa / SSO\n        </button>\n      </div>\n    </div>\n  </header>\n\n  <!-- ========================================================================= -->\n  <!-- SECCI\u00d3N 3: LANDING PAGE Y EXPLORADOR P\u00daBLICO                             -->\n  <!-- ========================================================================= -->\n  <main id=\"view-explorer\" class=\"view-content active max-w-[1440px] mx-auto px-4 sm:px-6 pt-8\">\n    <!-- Hero / Headline Ingenieril -->\n    <div class=\"max-w-3xl mb-8\">\n      <div class=\"inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-mono bg-[#0070f3]/10 text-[#0070f3] border border-[#0070f3]/30 mb-4\">\n        <span>\u25cf Motor Inteligente Multi-Jurisdicci\u00f3n</span>\n        <span class=\"text-[#888888]\">v3.4.1</span>\n      </div>\n      <h1 class=\"text-3xl sm:text-4xl md:text-5xl font-bold tracking-tighter text-white leading-tight\">\n        Licitaciones del Estado analizadas, auditadas y ganadas con IA.\n      </h1>\n      <p class=\"mt-3 text-[#888888] text-sm sm:text-base leading-relaxed\">\n        Explora pliegos, audita requisitos t\u00e9cnicos y financieros en segundos, detecta cl\u00e1usulas desproporcionadas y descarga formatos oficiales autocompletados para Panam\u00e1 (DGCP), Colombia (SECOP II) y Costa Rica (SICOP).\n      </p>\n    </div>\n\n    <!-- Barra de B\u00fasqueda Universal y Filtros de Pa\u00eds -->\n    <div class=\"geist-card p-4 rounded-xl mb-8 space-y-4\">\n      <div class=\"grid grid-cols-1 md:grid-cols-12 gap-3\">\n        <!-- Input de b\u00fasqueda -->\n        <div class=\"md:col-span-6 relative\">\n          <input \n            type=\"text\" \n            id=\"searchInput\" \n            placeholder=\"Buscar por objeto, entidad compradora, c\u00f3digo UNSPSC o n\u00famero de pliego...\"\n            class=\"w-full h-11 px-4 pl-10 text-xs sm:text-sm text-white placeholder-[#555555] bg-black border border-[#2e2e2e] rounded-md focus:outline-none focus:border-white focus:ring-1 focus:ring-white transition-colors\"\n          />\n          <div class=\"absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-[#555555]\">\n            <svg class=\"w-4 h-4\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z\"/></svg>\n          </div>\n          <div class=\"absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none\">\n            <kbd class=\"px-1.5 py-0.5 text-[10px] font-mono text-[#666666] bg-[#141414] border border-[#2e2e2e] rounded\">\u2318K</kbd>\n          </div>\n        </div>\n\n        <!-- Filtro Pa\u00eds -->\n        <div class=\"md:col-span-3\">\n          <select class=\"w-full h-11 px-3 text-xs sm:text-sm text-white bg-black border border-[#2e2e2e] rounded-md focus:outline-none focus:border-white transition-colors\">\n            <option value=\"ALL\">Todos los pa\u00edses (PA \u2022 CO \u2022 CR)</option>\n            <option value=\"PA\">\ud83c\uddf5\ud83c\udde6 Panam\u00e1 (Panam\u00e1Compra / ACP)</option>\n            <option value=\"CO\">\ud83c\udde8\ud83c\uddf4 Colombia (SECOP II Pliegos Tipo)</option>\n            <option value=\"CR\">\ud83c\udde8\ud83c\uddf7 Costa Rica (SICOP Ley 9986)</option>\n          </select>\n        </div>\n\n        <!-- Macro-Categor\u00edas -->\n        <div class=\"md:col-span-3\">\n          <select class=\"w-full h-11 px-3 text-xs sm:text-sm text-white bg-black border border-[#2e2e2e] rounded-md focus:outline-none focus:border-white transition-colors\">\n            <option value=\"ALL\">Todas las Categor\u00edas (10 Macro-rubros)</option>\n            <option value=\"OBRAS\">Obras Civiles e Infraestructura</option>\n            <option value=\"TECH\">Tecnolog\u00eda, Cloud & Telecom</option>\n            <option value=\"SALUD\">Salud, F\u00e1rmacos e Insumos</option>\n            <option value=\"MANT\">Mantenimiento y Facility</option>\n            <option value=\"CONSULT\">Consultor\u00eda e Interventor\u00eda</option>\n          </select>\n        </div>\n      </div>\n\n      <!-- Filtros R\u00e1pidos (Pills) -->\n      <div class=\"flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-[#1f1f1f] text-xs\">\n        <div class=\"flex flex-wrap items-center gap-2\">\n          <span class=\"text-[#666666] font-mono\">Filtros r\u00e1pidos:</span>\n          <button class=\"px-2.5 py-1 rounded bg-[#111111] hover:bg-[#1a1a1a] text-white border border-[#2e2e2e] text-[11px] font-mono\">Presupuesto > $1M USD</button>\n          <button class=\"px-2.5 py-1 rounded bg-[#111111] hover:bg-[#1a1a1a] text-white border border-[#2e2e2e] text-[11px] font-mono\">Cierre < 5 d\u00edas</button>\n          <button class=\"px-2.5 py-1 rounded bg-[#111111] hover:bg-[#1a1a1a] text-[#00e599] border border-[#00e599]/30 text-[11px] font-mono\">Con Pliegos Tipo</button>\n          <button class=\"px-2.5 py-1 rounded bg-[#111111] hover:bg-[#1a1a1a] text-[#f5a623] border border-[#f5a623]/30 text-[11px] font-mono\">Con Adendas Recientes</button>\n        </div>\n        <div class=\"text-[#888888] font-mono\">\n          Mostrando <span class=\"text-white font-semibold\">1,489</span> procesos activos\n        </div>\n      </div>\n    </div>\n\n    <!-- Grid de Tarjetas de Licitaci\u00f3n en Tiempo Real -->\n    <div class=\"space-y-4\">\n      \n      <!-- CARD 1: PANAM\u00c1 -->\n      <div class=\"geist-card p-5 rounded-lg border border-[#1f1f1f]\">\n        <div class=\"flex flex-col lg:flex-row lg:items-start justify-between gap-4\">\n          <!-- Meta Principal -->\n          <div class=\"space-y-2 flex-1\">\n            <div class=\"flex flex-wrap items-center gap-2\">\n              <span class=\"px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-[#0070f3]/15 text-[#0070f3] border border-[#0070f3]/30\">\n                \ud83c\uddf5\ud83c\udde6 PANAM\u00c1 \u2022 DGCP\n              </span>\n              <span class=\"font-mono text-xs text-[#888888]\">Pliego: 2025-0-03-0-08-LV-049821</span>\n              <span class=\"text-[#444444]\">\u2022</span>\n              <span class=\"font-mono text-xs text-[#888888]\">Metro de Panam\u00e1 S.A.</span>\n              <span class=\"inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono bg-[#f5a623]/10 text-[#f5a623] border border-[#f5a623]/30\">\n                \u26a1 Adenda N\u00b0 2 Publicada\n              </span>\n            </div>\n\n            <h3 class=\"text-lg font-semibold tracking-tight text-white hover:text-[#0070f3] cursor-pointer transition-colors\">\n              Mantenimiento Mayor, Adecuaci\u00f3n Integral y Suministro de Repuestos Cr\u00edticos para el Sistema de Tracci\u00f3n El\u00e9ctrica de la L\u00ednea 1\n            </h3>\n\n            <!-- Resumen IA -->\n            <p class=\"text-xs text-[#a1a1a1] leading-relaxed max-w-4xl bg-black/60 p-2.5 rounded border border-[#1f1f1f]\">\n              <strong class=\"text-white font-mono text-[11px]\">S\u00cdNTESIS IA:</strong> Contrato marco a 36 meses. Exige experiencia demostrada de 2 contratos de similar cuant\u00eda en sistemas ferroviarios metro y fianza de propuesta del 10% seg\u00fan Texto \u00danico Ley 22 de 2006. Riesgo detectado en Cl\u00e1usula 9.3: Plazo perentorio de entrega de garant\u00edas de 48 horas tras notificaci\u00f3n.\n            </p>\n\n            <div class=\"flex flex-wrap items-center gap-4 pt-1 font-mono text-xs text-[#888888]\">\n              <div>UNSPSC: <span class=\"text-[#eaeaea]\">72101500 (Mantenimiento de v\u00edas f\u00e9rreas)</span></div>\n              <div class=\"text-[#444444]\">\u2022</div>\n              <div>Visita previa: <span class=\"text-[#eaeaea]\">Obligatoria (28 Feb 2025)</span></div>\n            </div>\n          </div>\n\n          <!-- M\u00e9tricas y Acci\u00f3n -->\n          <div class=\"flex lg:flex-col items-end justify-between lg:justify-start gap-3 min-w-[260px] border-t lg:border-t-0 pt-3 lg:pt-0 border-[#1f1f1f]\">\n            <div class=\"text-right\">\n              <div class=\"text-xs font-mono text-[#888888]\">Presupuesto Oficial</div>\n              <div class=\"text-xl font-bold font-mono tracking-tight text-white\">$12,850,000 <span class=\"text-xs font-normal text-[#888888]\">USD</span></div>\n              <div class=\"text-[11px] font-mono text-[#00e599]\">B/ 12,850,000 Balboas</div>\n            </div>\n\n            <div class=\"text-right\">\n              <div class=\"text-xs font-mono text-[#888888]\">Cierre de Ofertas</div>\n              <div class=\"inline-flex items-center gap-1.5 font-mono text-xs text-[#f5a623] font-semibold bg-[#f5a623]/10 px-2 py-0.5 rounded\">\n                <svg class=\"w-3.5 h-3.5\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z\"/></svg>\n                <span>3d : 14h : 22m</span>\n              </div>\n            </div>\n\n            <!-- Botones -->\n            <div class=\"flex items-center gap-2 w-full mt-1\">\n              <button onclick=\"switchView('ai-diagnostic')\" class=\"flex-1 h-8 px-3 text-xs font-medium text-black bg-white rounded-md hover:bg-[#eaeaea] transition-colors inline-flex items-center justify-center gap-1.5\">\n                <span>Auditar Pliego IA</span>\n                <span class=\"text-[10px] font-mono bg-black text-white px-1 rounded\">82%</span>\n              </button>\n              <button onclick=\"switchView('templates')\" class=\"h-8 px-2.5 text-xs font-medium text-white border border-[#2e2e2e] hover:bg-[#161616] rounded-md transition-colors\" title=\"Descargar Plantillas Oficiales\">\n                Plantillas\n              </button>\n            </div>\n          </div>\n        </div>\n      </div>\n\n      <!-- CARD 2: COLOMBIA -->\n      <div class=\"geist-card p-5 rounded-lg border border-[#1f1f1f]\">\n        <div class=\"flex flex-col lg:flex-row lg:items-start justify-between gap-4\">\n          <!-- Meta Principal -->\n          <div class=\"space-y-2 flex-1\">\n            <div class=\"flex flex-wrap items-center gap-2\">\n              <span class=\"px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-[#00e599]/15 text-[#00e599] border border-[#00e599]/30\">\n                \ud83c\udde8\ud83c\uddf4 COLOMBIA \u2022 SECOP II\n              </span>\n              <span class=\"font-mono text-xs text-[#888888]\">Proceso: LP-INVIAS-024-2025</span>\n              <span class=\"text-[#444444]\">\u2022</span>\n              <span class=\"font-mono text-xs text-[#888888]\">Instituto Nacional de V\u00edas (INVIAS)</span>\n              <span class=\"inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono bg-[#0070f3]/10 text-[#0070f3] border border-[#0070f3]/30\">\n                \u2713 Pliego Tipo CCE Obligatorio\n              </span>\n            </div>\n\n            <h3 class=\"text-lg font-semibold tracking-tight text-white hover:text-[#0070f3] cursor-pointer transition-colors\">\n              Construcci\u00f3n, Pavimentaci\u00f3n y Estabilizaci\u00f3n de Taludes en el Corredor Vial Transversal del Cusiana (Ruta Nacional 62)\n            </h3>\n\n            <!-- Resumen IA -->\n            <p class=\"text-xs text-[#a1a1a1] leading-relaxed max-w-4xl bg-black/60 p-2.5 rounded border border-[#1f1f1f]\">\n              <strong class=\"text-white font-mono text-[11px]\">S\u00cdNTESIS IA:</strong> Licitaci\u00f3n de Obra P\u00fablica con Pliegos Tipo. \u00cdndices RUP m\u00ednimos obligatorios: Liquidez \u2265 2.5, Endeudamiento \u2264 65%, Raz\u00f3n Cobertura Intereses \u2265 3.0. Formatos 1, 2, 3, 4 y 5 obligatorios sin alteraciones. Incluye puntaje adicional de 0.5 puntos por inclusi\u00f3n laboral de mujeres.\n            </p>\n\n            <div class=\"flex flex-wrap items-center gap-4 pt-1 font-mono text-xs text-[#888888]\">\n              <div>UNSPSC: <span class=\"text-[#eaeaea]\">72141000 (Construcci\u00f3n de autopistas y carreteras)</span></div>\n              <div class=\"text-[#444444]\">\u2022</div>\n              <div>Acreditaci\u00f3n: <span class=\"text-[#eaeaea]\">RUP Vigente y en Firme</span></div>\n            </div>\n          </div>\n\n          <!-- M\u00e9tricas y Acci\u00f3n -->\n          <div class=\"flex lg:flex-col items-end justify-between lg:justify-start gap-3 min-w-[260px] border-t lg:border-t-0 pt-3 lg:pt-0 border-[#1f1f1f]\">\n            <div class=\"text-right\">\n              <div class=\"text-xs font-mono text-[#888888]\">Presupuesto Oficial</div>\n              <div class=\"text-xl font-bold font-mono tracking-tight text-white\">$11,450,000 <span class=\"text-xs font-normal text-[#888888]\">USD</span></div>\n              <div class=\"text-[11px] font-mono text-[#888888]\">$ 46,200,000,000 COP</div>\n            </div>\n\n            <div class=\"text-right\">\n              <div class=\"text-xs font-mono text-[#888888]\">Cierre de Ofertas</div>\n              <div class=\"inline-flex items-center gap-1.5 font-mono text-xs text-[#ee0000] font-semibold bg-[#ee0000]/10 px-2 py-0.5 rounded\">\n                <svg class=\"w-3.5 h-3.5\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z\"/></svg>\n                <span>18h : 05m : 11s</span>\n              </div>\n            </div>\n\n            <!-- Botones -->\n            <div class=\"flex items-center gap-2 w-full mt-1\">\n              <button onclick=\"switchView('ai-diagnostic')\" class=\"flex-1 h-8 px-3 text-xs font-medium text-black bg-white rounded-md hover:bg-[#eaeaea] transition-colors inline-flex items-center justify-center gap-1.5\">\n                <span>Auditar Pliego IA</span>\n                <span class=\"text-[10px] font-mono bg-black text-white px-1 rounded\">68%</span>\n              </button>\n              <button onclick=\"switchView('templates')\" class=\"h-8 px-2.5 text-xs font-medium text-white border border-[#2e2e2e] hover:bg-[#161616] rounded-md transition-colors\">\n                Formatos CCE\n              </button>\n            </div>\n          </div>\n        </div>\n      </div>\n\n      <!-- CARD 3: COSTA RICA -->\n      <div class=\"geist-card p-5 rounded-lg border border-[#1f1f1f]\">\n        <div class=\"flex flex-col lg:flex-row lg:items-start justify-between gap-4\">\n          <!-- Meta Principal -->\n          <div class=\"space-y-2 flex-1\">\n            <div class=\"flex flex-wrap items-center gap-2\">\n              <span class=\"px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-[#7928ca]/20 text-[#a855f7] border border-[#7928ca]/40\">\n                \ud83c\udde8\ud83c\uddf7 COSTA RICA \u2022 SICOP\n              </span>\n              <span class=\"font-mono text-xs text-[#888888]\">Cartel: 2025LN-000018-0001101142</span>\n              <span class=\"text-[#444444]\">\u2022</span>\n              <span class=\"font-mono text-xs text-[#888888]\">Caja Costarricense de Seguro Social (CCSS)</span>\n              <span class=\"inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono bg-[#00e599]/10 text-[#00e599] border border-[#00e599]/30\">\n                Ley General N\u00b0 9986\n              </span>\n            </div>\n\n            <h3 class=\"text-lg font-semibold tracking-tight text-white hover:text-[#0070f3] cursor-pointer transition-colors\">\n              Suministro, Despliegue y Mantenimiento de Infraestructura Hiperconvergente y Almacenamiento Centralizado para el EDUS\n            </h3>\n\n            <!-- Resumen IA -->\n            <p class=\"text-xs text-[#a1a1a1] leading-relaxed max-w-4xl bg-black/60 p-2.5 rounded border border-[#1f1f1f]\">\n              <strong class=\"text-white font-mono text-[11px]\">S\u00cdNTESIS IA:</strong> Licitaci\u00f3n Mayor bajo Ley N\u00b0 9986. Requiere firma digital BCCR activa para la subida de oferta en SICOP. Desglose detallado de estructura de costos con desglose de utilidad bruta y f\u00f3rmulas de reajuste de precios del Decreto Ejecutivo. Se detect\u00f3 cl\u00e1usula limitativa sobre certificaciones de fabricante con validez m\u00ednima de 60 d\u00edas.\n            </p>\n\n            <div class=\"flex flex-wrap items-center gap-4 pt-1 font-mono text-xs text-[#888888]\">\n              <div>UNSPSC: <span class=\"text-[#eaeaea]\">43211500 (Servidores de datos)</span></div>\n              <div class=\"text-[#444444]\">\u2022</div>\n              <div>R\u00e9gimen Prohibiciones: <span class=\"text-[#eaeaea]\">Declaraci\u00f3n Art. 23 Obligatoria</span></div>\n            </div>\n          </div>\n\n          <!-- M\u00e9tricas y Acci\u00f3n -->\n          <div class=\"flex lg:flex-col items-end justify-between lg:justify-start gap-3 min-w-[260px] border-t lg:border-t-0 pt-3 lg:pt-0 border-[#1f1f1f]\">\n            <div class=\"text-right\">\n              <div class=\"text-xs font-mono text-[#888888]\">Presupuesto Oficial</div>\n              <div class=\"text-xl font-bold font-mono tracking-tight text-white\">$5,620,000 <span class=\"text-xs font-normal text-[#888888]\">USD</span></div>\n              <div class=\"text-[11px] font-mono text-[#888888]\">\u20a1 2,866,200,000 CRC</div>\n            </div>\n\n            <div class=\"text-right\">\n              <div class=\"text-xs font-mono text-[#888888]\">Cierre de Ofertas</div>\n              <div class=\"inline-flex items-center gap-1.5 font-mono text-xs text-white font-semibold bg-[#222222] px-2 py-0.5 rounded\">\n                <svg class=\"w-3.5 h-3.5\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z\"/></svg>\n                <span>7d : 09h : 44m</span>\n              </div>\n            </div>\n\n            <!-- Botones -->\n            <div class=\"flex items-center gap-2 w-full mt-1\">\n              <button onclick=\"switchView('ai-diagnostic')\" class=\"flex-1 h-8 px-3 text-xs font-medium text-black bg-white rounded-md hover:bg-[#eaeaea] transition-colors inline-flex items-center justify-center gap-1.5\">\n                <span>Auditar Pliego IA</span>\n                <span class=\"text-[10px] font-mono bg-black text-white px-1 rounded\">94%</span>\n              </button>\n              <button onclick=\"switchView('templates')\" class=\"h-8 px-2.5 text-xs font-medium text-white border border-[#2e2e2e] hover:bg-[#161616] rounded-md transition-colors\">\n                SICOP Docs\n              </button>\n            </div>\n          </div>\n        </div>\n      </div>\n\n    </div>\n  </main>\n\n  <!-- ========================================================================= -->\n  <!-- SECCI\u00d3N 4: MOTOR DE DIAGN\u00d3STICO IA (\"C\u00d3MO GANAR LA LICITACI\u00d3N\")         -->\n  <!-- ========================================================================= -->\n  <main id=\"view-ai-diagnostic\" class=\"view-content max-w-[1440px] mx-auto px-4 sm:px-6 pt-8\">\n    <div class=\"flex items-center justify-between pb-6 border-b border-[#1f1f1f]\">\n      <div>\n        <div class=\"flex items-center gap-2\">\n          <span class=\"text-xs font-mono text-[#0070f3] bg-[#0070f3]/10 px-2 py-0.5 rounded border border-[#0070f3]/30\">DIAGN\u00d3STICO PREDICTIVO IA</span>\n          <span class=\"text-xs font-mono text-[#888888]\">Pliego Ref: LP-INVIAS-024-2025</span>\n        </div>\n        <h2 class=\"text-2xl font-bold tracking-tight text-white mt-1\">Evaluaci\u00f3n de Probabilidad de Ganar (Win Rate Score)</h2>\n        <p class=\"text-xs text-[#888888]\">Cruce automatizado entre las exigencias del pliego licitatorio y el perfil corporativo legal, financiero y t\u00e9cnico de su empresa.</p>\n      </div>\n      <div class=\"flex items-center gap-3\">\n        <button onclick=\"openModal('clarification-modal')\" class=\"h-9 px-3.5 text-xs font-medium text-white bg-black border border-[#2e2e2e] hover:border-[#444444] rounded-md transition-colors inline-flex items-center gap-2\">\n          <svg class=\"w-3.5 h-3.5 text-[#0070f3]\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z\"/></svg>\n          Redactar Objeci\u00f3n / Aclaraci\u00f3n\n        </button>\n        <button onclick=\"openModal('consorcio-modal')\" class=\"h-9 px-3.5 text-xs font-medium text-black bg-white hover:bg-[#eaeaea] rounded-md transition-colors inline-flex items-center gap-1.5 font-semibold\">\n          Estructurar Consorcio \u00d3ptimo\n        </button>\n      </div>\n    </div>\n\n    <!-- Win-Rate Meter & 3 Factores Clave -->\n    <div class=\"grid grid-cols-1 lg:grid-cols-12 gap-6 mt-6\">\n      \n      <!-- SCORE PRINCIPAL (4 COLS) -->\n      <div class=\"lg:col-span-4 geist-card p-6 rounded-xl flex flex-col justify-between\">\n        <div>\n          <div class=\"text-xs font-mono text-[#888888] uppercase tracking-wider\">Score Global de Adjudicaci\u00f3n</div>\n          <div class=\"mt-4 flex items-baseline gap-2\">\n            <span class=\"text-6xl font-extrabold font-mono tracking-tighter text-white\">82</span>\n            <span class=\"text-2xl font-mono text-[#888888]\">/100</span>\n          </div>\n          <div class=\"inline-flex items-center gap-1.5 mt-2 px-2.5 py-1 rounded-full text-xs font-mono bg-[#00e599]/10 text-[#00e599] border border-[#00e599]/30\">\n            <span class=\"w-2 h-2 rounded-full bg-[#00e599]\"></span>\n            Probabilidad Alta: Perfil Altamente Competitivo\n          </div>\n          <p class=\"text-xs text-[#888888] mt-4 leading-relaxed\">\n            Su firma cumple con los requisitos habilitantes y tiene ventaja t\u00e9cnica en experiencia acumulada. Sin embargo, se identific\u00f3 un d\u00e9ficit de capital de trabajo que exige soluci\u00f3n consorcial o apalancamiento financiero.\n          </p>\n        </div>\n\n        <div class=\"pt-6 border-t border-[#1f1f1f] space-y-2\">\n          <div class=\"flex justify-between text-xs font-mono\">\n            <span class=\"text-[#888888]\">Simulaci\u00f3n de Competidores:</span>\n            <span class=\"text-white\">4 oferentes probables</span>\n          </div>\n          <div class=\"flex justify-between text-xs font-mono\">\n            <span class=\"text-[#888888]\">Sensibilidad al Precio (A.I.U):</span>\n            <span class=\"text-[#f5a623]\">Alta (Factor 0.6)</span>\n          </div>\n        </div>\n      </div>\n\n      <!-- DESGLOSE EN LOS 3 FACTORES CLAVE (8 COLS) -->\n      <div class=\"lg:col-span-8 space-y-4\">\n        \n        <!-- Factor 1: Experiencia y Capacidad T\u00e9cnica -->\n        <div class=\"geist-card p-4 rounded-lg\">\n          <div class=\"flex items-center justify-between\">\n            <div class=\"flex items-center gap-3\">\n              <div class=\"w-8 h-8 rounded bg-[#111111] border border-[#2e2e2e] flex items-center justify-center font-mono text-sm text-white\">\n                01\n              </div>\n              <div>\n                <h4 class=\"text-sm font-semibold text-white\">Capacidad T\u00e9cnica y Experiencia Acreditada</h4>\n                <p class=\"text-xs text-[#888888]\">Contratos ejecutados RUP/DGCP con c\u00f3digos UNSPSC id\u00e9nticos</p>\n              </div>\n            </div>\n            <div class=\"text-right font-mono\">\n              <span class=\"text-sm font-bold text-[#00e599]\">92%</span>\n              <span class=\"text-xs text-[#666666]\"> (Aprobado)</span>\n            </div>\n          </div>\n          <div class=\"w-full bg-[#161616] h-1.5 rounded-full mt-3 overflow-hidden\">\n            <div class=\"bg-[#00e599] h-full\" style=\"width: 92%\"></div>\n          </div>\n          <div class=\"mt-2.5 text-xs font-mono text-[#888888] flex justify-between\">\n            <span>Requerido: 3 contratos \u2265 10,000 SMMLV</span>\n            <span class=\"text-white\">Acreditado: 4 contratos (Total: 14,200 SMMLV)</span>\n          </div>\n        </div>\n\n        <!-- Factor 2: Capacidad Financiera (Alerta) -->\n        <div class=\"geist-card p-4 rounded-lg border-l-2 border-l-[#f5a623]\">\n          <div class=\"flex items-center justify-between\">\n            <div class=\"flex items-center gap-3\">\n              <div class=\"w-8 h-8 rounded bg-[#111111] border border-[#2e2e2e] flex items-center justify-center font-mono text-sm text-[#f5a623]\">\n                02\n              </div>\n              <div>\n                <h4 class=\"text-sm font-semibold text-white\">Capacidad Financiera y Liquidez</h4>\n                <p class=\"text-xs text-[#888888]\">Indicadores de solvencia, liquidez y endeudamiento exigidos en pliego</p>\n              </div>\n            </div>\n            <div class=\"text-right font-mono\">\n              <span class=\"text-sm font-bold text-[#f5a623]\">64%</span>\n              <span class=\"text-xs text-[#f5a623]\"> (Brecha Detectada)</span>\n            </div>\n          </div>\n          <div class=\"w-full bg-[#161616] h-1.5 rounded-full mt-3 overflow-hidden\">\n            <div class=\"bg-[#f5a623] h-full\" style=\"width: 64%\"></div>\n          </div>\n          <div class=\"mt-2.5 text-xs font-mono flex flex-wrap justify-between text-[#888888] gap-2\">\n            <span>\u00cdndice Liquidez Pliego: <strong class=\"text-white\">\u2265 2.5</strong> | Su Empresa: <span class=\"text-[#00e599]\">2.8 \u2713</span></span>\n            <span>Endeudamiento Pliego: <strong class=\"text-white\">\u2264 65%</strong> | Su Empresa: <span class=\"text-[#ee0000]\">69.4% \u2715</span></span>\n          </div>\n        </div>\n\n        <!-- Factor 3: Habilitaci\u00f3n Legal y Normativa -->\n        <div class=\"geist-card p-4 rounded-lg\">\n          <div class=\"flex items-center justify-between\">\n            <div class=\"flex items-center gap-3\">\n              <div class=\"w-8 h-8 rounded bg-[#111111] border border-[#2e2e2e] flex items-center justify-center font-mono text-sm text-white\">\n                03\n              </div>\n              <div>\n                <h4 class=\"text-sm font-semibold text-white\">Habilitaci\u00f3n Jur\u00eddica y Certificaciones</h4>\n                <p class=\"text-xs text-[#888888]\">Inhabilidades, beneficiario final, paz y salvos tributarios, ISO</p>\n              </div>\n            </div>\n            <div class=\"text-right font-mono\">\n              <span class=\"text-sm font-bold text-[#00e599]\">98%</span>\n              <span class=\"text-xs text-[#666666]\"> (Pleno)</span>\n            </div>\n          </div>\n          <div class=\"w-full bg-[#161616] h-1.5 rounded-full mt-3 overflow-hidden\">\n            <div class=\"bg-[#00e599] h-full\" style=\"width: 98%\"></div>\n          </div>\n          <div class=\"mt-2.5 text-xs font-mono text-[#888888] flex justify-between\">\n            <span>Paz y Salvo Tributario: Vigente</span>\n            <span class=\"text-white\">ISO 9001 / ISO 45001: Validadas en archivo</span>\n          </div>\n        </div>\n\n      </div>\n    </div>\n\n    <!-- Panel de Brechas Cr\u00edticas y Soluci\u00f3n Consorcial -->\n    <div class=\"grid grid-cols-1 md:grid-cols-2 gap-6 mt-6\">\n      <!-- Brechas y Riesgos -->\n      <div class=\"geist-card p-5 rounded-xl border border-[#ee0000]/30 bg-[#ee0000]/5\">\n        <div class=\"flex items-center gap-2 text-[#ee0000] font-mono text-xs font-semibold\">\n          <svg class=\"w-4 h-4\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z\"/></svg>\n          BRECHAS CR\u00cdTICAS DE DESCALIFICACI\u00d3N INMEDIATA (ALERTAS)\n        </div>\n        <ul class=\"mt-3 space-y-2 text-xs text-[#eaeaea]\">\n          <li class=\"flex items-start gap-2\">\n            <span class=\"text-[#ee0000] font-mono font-bold\">\u2022</span>\n            <span><strong>Endeudamiento Excedido:</strong> El pliego no permite subsanar el \u00edndice del 65% de endeudamiento posterior al cierre. Si se presenta individualmente, la propuesta ser\u00e1 rechazada.</span>\n          </li>\n          <li class=\"flex items-start gap-2\">\n            <span class=\"text-[#f5a623] font-mono font-bold\">\u2022</span>\n            <span><strong>Cl\u00e1usula Restrictiva 5.4:</strong> Exige un especialista en geotecnia con tarjeta profesional expedida hace m\u00e1s de 12 a\u00f1os, lo cual vulnera la circular de Colombia Compra Eficiente.</span>\n          </li>\n        </ul>\n      </div>\n\n      <!-- Estrategia Recomendada por IA -->\n      <div class=\"geist-card p-5 rounded-xl border border-[#0070f3]/30 bg-[#0070f3]/5\">\n        <div class=\"flex items-center gap-2 text-[#0070f3] font-mono text-xs font-semibold\">\n          <svg class=\"w-4 h-4\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M13 10V3L4 14h7v7l9-11h-7z\"/></svg>\n          ESTRATEGIA RECOMENDADA POR IA PARA GANAR\n        </div>\n        <div class=\"mt-3 text-xs text-[#eaeaea] space-y-2 leading-relaxed\">\n          <p>\n            1. <strong>Uni\u00f3n Temporal / Consorcio 60%-40%:</strong> Vincular a una firma aliada con endeudamiento &lt; 40% y liquidez &gt; 3.0 para promediar los estados financieros y superar con holgura el Formato 4 del RUP.\n          </p>\n          <p>\n            2. <strong>Objeci\u00f3n al Pliego:</strong> Radicar de inmediato solicitud de aclaraci\u00f3n sobre la Cl\u00e1usula 5.4 mediante nuestro generador legal para que la entidad elimine la exigencia restrictiva de antig\u00fcedad.\n          </p>\n        </div>\n      </div>\n    </div>\n  </main>\n\n  <!-- ========================================================================= -->\n  <!-- SECCI\u00d3N 5: REPOSITORIO DE PLANTILLAS Y DOCUMENTOS OFICIALES              -->\n  <!-- ========================================================================= -->\n  <main id=\"view-templates\" class=\"view-content max-w-[1440px] mx-auto px-4 sm:px-6 pt-8\">\n    <div class=\"flex flex-col md:flex-row md:items-center justify-between pb-6 border-b border-[#1f1f1f] gap-4\">\n      <div>\n        <div class=\"inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-mono bg-[#111111] text-[#888888] border border-[#2e2e2e]\">\n          CENTRO OFICIAL DE RECURSOS JUR\u00cdDICOS Y FINANCIEROS\n        </div>\n        <h2 class=\"text-2xl font-bold tracking-tight text-white mt-1\">Plantillas Legales y Matrices de Licitaci\u00f3n</h2>\n        <p class=\"text-xs text-[#888888]\">Documentos formulados en .xlsx, minutas en .docx y workspaces de Notion adaptados estrictamente a la legislaci\u00f3n vigente.</p>\n      </div>\n\n      <!-- Selector de Jurisdicci\u00f3n -->\n      <div class=\"inline-flex p-1 bg-[#0a0a0a] border border-[#1f1f1f] rounded-lg\">\n        <button onclick=\"filterTemplates('PA')\" id=\"btn-tmpl-pa\" class=\"tmpl-pill px-3 py-1.5 text-xs font-mono rounded-md bg-[#1a1a1a] text-white font-medium\">\ud83c\uddf5\ud83c\udde6 Panam\u00e1 (Ley 22)</button>\n        <button onclick=\"filterTemplates('CO')\" id=\"btn-tmpl-co\" class=\"tmpl-pill px-3 py-1.5 text-xs font-mono rounded-md text-[#888888] hover:text-white\">\ud83c\udde8\ud83c\uddf4 Colombia (Pliegos Tipo)</button>\n        <button onclick=\"filterTemplates('CR')\" id=\"btn-tmpl-cr\" class=\"tmpl-pill px-3 py-1.5 text-xs font-mono rounded-md text-[#888888] hover:text-white\">\ud83c\udde8\ud83c\uddf7 Costa Rica (Ley 9986)</button>\n      </div>\n    </div>\n\n    <!-- Banner Generador Asistido con IA -->\n    <div class=\"mt-6 p-4 rounded-xl geist-card border border-[#0070f3]/40 bg-gradient-to-r from-black via-[#0070f3]/10 to-black flex flex-col sm:flex-row sm:items-center justify-between gap-4\">\n      <div class=\"flex items-center gap-3\">\n        <div class=\"w-10 h-10 rounded-lg bg-[#0070f3]/20 border border-[#0070f3]/30 flex items-center justify-center text-[#0070f3]\">\n          <svg class=\"w-5 h-5\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z\"/></svg>\n        </div>\n        <div>\n          <h4 class=\"text-sm font-semibold text-white\">Generador Asistido de Anexos con IA (Incluido en Suscripci\u00f3n)</h4>\n          <p class=\"text-xs text-[#888888]\">Carga el PDF del pliego de condiciones y nuestra IA pre-llenar\u00e1 todas las matrices y cartas con la informaci\u00f3n legal de tu empresa.</p>\n        </div>\n      </div>\n      <button onclick=\"openModal('ai-filler-modal')\" class=\"h-9 px-4 text-xs font-medium text-black bg-white hover:bg-[#eaeaea] rounded-md transition-colors whitespace-nowrap font-mono font-semibold\">\n        Subir Pliego y Diligenciar Auto \u2197\n      </button>\n    </div>\n\n    <!-- Cat\u00e1logo de Documentos (Filtrable) -->\n    <div class=\"grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6\" id=\"templates-grid\">\n      \n      <!-- ITEM PA 1 -->\n      <div class=\"template-item tmpl-pa geist-card p-4 rounded-lg flex flex-col justify-between\">\n        <div>\n          <div class=\"flex items-center justify-between text-xs font-mono text-[#888888] mb-2\">\n            <span class=\"text-[#0070f3]\">PANAM\u00c1 \u2022 DGCP</span>\n            <span>.XLSX CON F\u00d3RMULAS</span>\n          </div>\n          <h4 class=\"text-sm font-semibold text-white\">Formulario Oficial de Desglose de Precios y Costos Unitarios</h4>\n          <p class=\"text-xs text-[#888888] mt-1.5 leading-relaxed\">\n            Estructura estandarizada seg\u00fan Texto \u00danico de la Ley 22 de 2006. Incluye hojas formuladas para mano de obra (MITRADEL), materiales e ITBMS discriminado.\n          </p>\n        </div>\n        <div class=\"pt-4 mt-4 border-t border-[#1f1f1f] flex items-center justify-between\">\n          <span class=\"text-xs font-mono font-semibold text-white\">$24.00 USD</span>\n          <button onclick=\"openModal('download-modal')\" class=\"px-3 py-1.5 text-xs font-medium bg-[#161616] hover:bg-white hover:text-black border border-[#2e2e2e] rounded transition-all\">\n            Descargar Plantilla\n          </button>\n        </div>\n      </div>\n\n      <!-- ITEM PA 2 -->\n      <div class=\"template-item tmpl-pa geist-card p-4 rounded-lg flex flex-col justify-between\">\n        <div>\n          <div class=\"flex items-center justify-between text-xs font-mono text-[#888888] mb-2\">\n            <span class=\"text-[#0070f3]\">PANAM\u00c1 \u2022 DGCP</span>\n            <span>.DOCX FORMAL</span>\n          </div>\n          <h4 class=\"text-sm font-semibold text-white\">Declaraci\u00f3n Jurada de Acciones Nominativas y Beneficiario Final</h4>\n          <p class=\"text-xs text-[#888888] mt-1.5 leading-relaxed\">\n            Formato obligatorio conforme a Ley 23 y requerimientos de Panam\u00e1Compra. Incluye cl\u00e1usulas de certificaci\u00f3n notarial y no incapacidad legal para contratar.\n          </p>\n        </div>\n        <div class=\"pt-4 mt-4 border-t border-[#1f1f1f] flex items-center justify-between\">\n          <span class=\"text-xs font-mono font-semibold text-white\">$19.00 USD</span>\n          <button onclick=\"openModal('download-modal')\" class=\"px-3 py-1.5 text-xs font-medium bg-[#161616] hover:bg-white hover:text-black border border-[#2e2e2e] rounded transition-all\">\n            Descargar Plantilla\n          </button>\n        </div>\n      </div>\n\n      <!-- ITEM PA 3 -->\n      <div class=\"template-item tmpl-pa geist-card p-4 rounded-lg flex flex-col justify-between\">\n        <div>\n          <div class=\"flex items-center justify-between text-xs font-mono text-[#888888] mb-2\">\n            <span class=\"text-[#0070f3]\">PANAM\u00c1 \u2022 LEY 22</span>\n            <span>.DOCX + NOTION</span>\n          </div>\n          <h4 class=\"text-sm font-semibold text-white\">Minuta de Acuerdo de Consorcio para Licitaciones P\u00fablicas</h4>\n          <p class=\"text-xs text-[#888888] mt-1.5 leading-relaxed\">\n            Contrato privado de conformaci\u00f3n accidental con designaci\u00f3n de apoderado \u00fanico, porcentaje de participaci\u00f3n y delimitaci\u00f3n de responsabilidad solidaria.\n          </p>\n        </div>\n        <div class=\"pt-4 mt-4 border-t border-[#1f1f1f] flex items-center justify-between\">\n          <span class=\"text-xs font-mono font-semibold text-white\">$39.00 USD</span>\n          <button onclick=\"openModal('download-modal')\" class=\"px-3 py-1.5 text-xs font-medium bg-[#161616] hover:bg-white hover:text-black border border-[#2e2e2e] rounded transition-all\">\n            Descargar Plantilla\n          </button>\n        </div>\n      </div>\n\n      <!-- ITEM CO 1 -->\n      <div class=\"template-item tmpl-co geist-card p-4 rounded-lg flex flex-col justify-between\">\n        <div>\n          <div class=\"flex items-center justify-between text-xs font-mono text-[#888888] mb-2\">\n            <span class=\"text-[#00e599]\">COLOMBIA \u2022 SECOP II</span>\n            <span>FORMATO TIPO CCE</span>\n          </div>\n          <h4 class=\"text-sm font-semibold text-white\">Formato 2: Conformaci\u00f3n de Proponente Plural (Consorcio / UT)</h4>\n          <p class=\"text-xs text-[#888888] mt-1.5 leading-relaxed\">\n            Plantilla oficial estricta de Colombia Compra Eficiente. Configuraci\u00f3n exacta de obligaciones, facultades del representante y porcentajes de ejecuci\u00f3n.\n          </p>\n        </div>\n        <div class=\"pt-4 mt-4 border-t border-[#1f1f1f] flex items-center justify-between\">\n          <span class=\"text-xs font-mono font-semibold text-white\">$22.00 USD</span>\n          <button onclick=\"openModal('download-modal')\" class=\"px-3 py-1.5 text-xs font-medium bg-[#161616] hover:bg-white hover:text-black border border-[#2e2e2e] rounded transition-all\">\n            Descargar Plantilla\n          </button>\n        </div>\n      </div>\n\n      <!-- ITEM CO 2 -->\n      <div class=\"template-item tmpl-co geist-card p-4 rounded-lg flex flex-col justify-between\">\n        <div>\n          <div class=\"flex items-center justify-between text-xs font-mono text-[#888888] mb-2\">\n            <span class=\"text-[#00e599]\">COLOMBIA \u2022 RUP & FINANZAS</span>\n            <span>.XLSX FORMULADO</span>\n          </div>\n          <h4 class=\"text-sm font-semibold text-white\">Formato 4: Capacidad Financiera, Organizacional y Cobertura</h4>\n          <p class=\"text-xs text-[#888888] mt-1.5 leading-relaxed\">\n            Hoja de c\u00e1lculo con validaci\u00f3n autom\u00e1tica de f\u00f3rmulas de liquidez, nivel de endeudamiento y raz\u00f3n de cobertura de intereses seg\u00fan certificaci\u00f3n RUP.\n          </p>\n        </div>\n        <div class=\"pt-4 mt-4 border-t border-[#1f1f1f] flex items-center justify-between\">\n          <span class=\"text-xs font-mono font-semibold text-white\">$29.00 USD</span>\n          <button onclick=\"openModal('download-modal')\" class=\"px-3 py-1.5 text-xs font-medium bg-[#161616] hover:bg-white hover:text-black border border-[#2e2e2e] rounded transition-all\">\n            Descargar Plantilla\n          </button>\n        </div>\n      </div>\n\n      <!-- ITEM CO 3 -->\n      <div class=\"template-item tmpl-co geist-card p-4 rounded-lg flex flex-col justify-between\">\n        <div>\n          <div class=\"flex items-center justify-between text-xs font-mono text-[#888888] mb-2\">\n            <span class=\"text-[#00e599]\">COLOMBIA \u2022 INGENIER\u00cdA</span>\n            <span>.XLSX AVANZADO</span>\n          </div>\n          <h4 class=\"text-sm font-semibold text-white\">An\u00e1lisis de Precios Unitarios (APU) con Desglose de A.I.U.</h4>\n          <p class=\"text-xs text-[#888888] mt-1.5 leading-relaxed\">\n            Matriz completa de costos directos, cuadrillas de trabajo, rendimientos de maquinaria y c\u00e1lculo autom\u00e1tico de Administraci\u00f3n, Imprevistos y Utilidad.\n          </p>\n        </div>\n        <div class=\"pt-4 mt-4 border-t border-[#1f1f1f] flex items-center justify-between\">\n          <span class=\"text-xs font-mono font-semibold text-white\">$34.00 USD</span>\n          <button onclick=\"openModal('download-modal')\" class=\"px-3 py-1.5 text-xs font-medium bg-[#161616] hover:bg-white hover:text-black border border-[#2e2e2e] rounded transition-all\">\n            Descargar Plantilla\n          </button>\n        </div>\n      </div>\n\n      <!-- ITEM CR 1 -->\n      <div class=\"template-item tmpl-cr geist-card p-4 rounded-lg flex flex-col justify-between\">\n        <div>\n          <div class=\"flex items-center justify-between text-xs font-mono text-[#888888] mb-2\">\n            <span class=\"text-[#a855f7]\">COSTA RICA \u2022 SICOP</span>\n            <span>.DOCX REVISADO</span>\n          </div>\n          <h4 class=\"text-sm font-semibold text-white\">Declaraci\u00f3n de No Afectaci\u00f3n por R\u00e9gimen de Prohibiciones</h4>\n          <p class=\"text-xs text-[#888888] mt-1.5 leading-relaxed\">\n            Cumplimiento riguroso del Art\u00edculo 23 de la Ley General de Contrataci\u00f3n P\u00fablica N\u00b0 9986. Requisito de admisibilidad excluyente en el sistema SICOP.\n          </p>\n        </div>\n        <div class=\"pt-4 mt-4 border-t border-[#1f1f1f] flex items-center justify-between\">\n          <span class=\"text-xs font-mono font-semibold text-white\">$19.00 USD</span>\n          <button onclick=\"openModal('download-modal')\" class=\"px-3 py-1.5 text-xs font-medium bg-[#161616] hover:bg-white hover:text-black border border-[#2e2e2e] rounded transition-all\">\n            Descargar Plantilla\n          </button>\n        </div>\n      </div>\n\n      <!-- ITEM CR 2 -->\n      <div class=\"template-item tmpl-cr geist-card p-4 rounded-lg flex flex-col justify-between\">\n        <div>\n          <div class=\"flex items-center justify-between text-xs font-mono text-[#888888] mb-2\">\n            <span class=\"text-[#a855f7]\">COSTA RICA \u2022 SICOP</span>\n            <span>.XLSX CON DECRETO</span>\n          </div>\n          <h4 class=\"text-sm font-semibold text-white\">Hoja de Estructura de Precios y F\u00f3rmulas de Reajuste</h4>\n          <p class=\"text-xs text-[#888888] mt-1.5 leading-relaxed\">\n            Desglose de costos directos e indirectos con f\u00f3rmulas oficiales de reajuste por variaciones en \u00edndices de precios al consumidor o mano de obra del INEC.\n          </p>\n        </div>\n        <div class=\"pt-4 mt-4 border-t border-[#1f1f1f] flex items-center justify-between\">\n          <span class=\"text-xs font-mono font-semibold text-white\">$27.00 USD</span>\n          <button onclick=\"openModal('download-modal')\" class=\"px-3 py-1.5 text-xs font-medium bg-[#161616] hover:bg-white hover:text-black border border-[#2e2e2e] rounded transition-all\">\n            Descargar Plantilla\n          </button>\n        </div>\n      </div>\n\n      <!-- ITEM CR 3 -->\n      <div class=\"template-item tmpl-cr geist-card p-4 rounded-lg flex flex-col justify-between\">\n        <div>\n          <div class=\"flex items-center justify-between text-xs font-mono text-[#888888] mb-2\">\n            <span class=\"text-[#a855f7]\">COSTA RICA \u2022 SICOP</span>\n            <span>.DOCX CERTIFICADO</span>\n          </div>\n          <h4 class=\"text-sm font-semibold text-white\">Modelo de Acuerdo Consorcial para Contrataci\u00f3n en SICOP</h4>\n          <p class=\"text-xs text-[#888888] mt-1.5 leading-relaxed\">\n            Minuta legal de consorcio conforme al reglamento a la Ley N\u00b0 9986. Estructura de apoderamiento especial para firma digital unificada ante la administraci\u00f3n.\n          </p>\n        </div>\n        <div class=\"pt-4 mt-4 border-t border-[#1f1f1f] flex items-center justify-between\">\n          <span class=\"text-xs font-mono font-semibold text-white\">$39.00 USD</span>\n          <button onclick=\"openModal('download-modal')\" class=\"px-3 py-1.5 text-xs font-medium bg-[#161616] hover:bg-white hover:text-black border border-[#2e2e2e] rounded transition-all\">\n            Descargar Plantilla\n          </button>\n        </div>\n      </div>\n\n    </div>\n\n    <!-- Opci\u00f3n Kit Maestro -->\n    <div class=\"mt-8 p-6 geist-card rounded-xl border border-[#333333] flex flex-col lg:flex-row items-center justify-between gap-6\">\n      <div>\n        <span class=\"text-xs font-mono text-[#00e599] bg-[#00e599]/10 border border-[#00e599]/30 px-2 py-0.5 rounded uppercase\">Acceso Todo en Uno</span>\n        <h3 class=\"text-lg font-bold text-white mt-2\">Kit Maestro Trilateral: 35+ Plantillas Completas para PA, CO y CR</h3>\n        <p class=\"text-xs text-[#888888] mt-1 max-w-2xl\">\n          Descarga en un solo archivo todos los formularios, matrices financieras y formatos legales en .xlsx y .docx con derecho a actualizaciones anuales autom\u00e1ticas ante reformas legislativas.\n        </p>\n      </div>\n      <div class=\"flex items-center gap-4\">\n        <div class=\"text-right\">\n          <div class=\"text-xs font-mono line-through text-[#666666]\">$249.00 USD</div>\n          <div class=\"text-2xl font-bold font-mono text-white\">$149.00 USD</div>\n        </div>\n        <button onclick=\"openModal('download-modal')\" class=\"h-10 px-5 text-xs font-semibold text-black bg-white hover:bg-[#eaeaea] rounded-md transition-colors\">\n          Comprar Kit Maestro\n        </button>\n      </div>\n    </div>\n  </main>\n\n  <!-- ========================================================================= -->\n  <!-- SECCI\u00d3N 6: DASHBOARD DE SEGUIMIENTO (KANBAN + AUDITOR\u00cdA DE PLIEGOS)      -->\n  <!-- ========================================================================= -->\n  <main id=\"view-kanban\" class=\"view-content max-w-[1440px] mx-auto px-4 sm:px-6 pt-8\">\n    <div class=\"flex flex-col md:flex-row md:items-center justify-between pb-6 border-b border-[#1f1f1f] gap-4\">\n      <div>\n        <div class=\"flex items-center gap-2\">\n          <span class=\"text-xs font-mono text-white bg-[#111111] px-2 py-0.5 rounded border border-[#2e2e2e]\">PIPELINE DE LICITACIONES</span>\n          <span class=\"text-xs font-mono text-[#888888]\">12 Procesos en Gesti\u00f3n Activa</span>\n        </div>\n        <h2 class=\"text-2xl font-bold tracking-tight text-white mt-1\">Tablero de Control del Ciclo de Vida</h2>\n      </div>\n\n      <div class=\"flex items-center gap-3\">\n        <button onclick=\"openModal('trap-modal')\" class=\"h-9 px-3 text-xs font-medium text-[#f5a623] bg-[#f5a623]/10 border border-[#f5a623]/30 rounded-md hover:bg-[#f5a623]/20 transition-colors inline-flex items-center gap-1.5\">\n          <svg class=\"w-4 h-4\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z\"/></svg>\n          Visor de Cl\u00e1usulas Trampa (3 detectadas)\n        </button>\n        <button class=\"h-9 px-3.5 text-xs font-medium text-black bg-white hover:bg-[#eaeaea] rounded-md transition-colors font-semibold\">\n          + Agregar Licitaci\u00f3n por Pliego\n        </button>\n      </div>\n    </div>\n\n    <!-- Tablero Kanban (6 Columnas) -->\n    <div class=\"grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-3.5 mt-6 overflow-x-auto min-h-[600px] pb-6\">\n      \n      <!-- COL 1: DETECTADA -->\n      <div class=\"bg-[#080808] border border-[#1a1a1a] rounded-lg p-3 flex flex-col min-w-[210px]\">\n        <div class=\"flex items-center justify-between text-xs font-mono text-[#888888] pb-2 border-b border-[#1f1f1f]\">\n          <span class=\"text-white font-medium\">1. Detectada</span>\n          <span class=\"bg-[#141414] px-1.5 py-0.2 rounded text-[11px]\">3</span>\n        </div>\n        <div class=\"mt-3 space-y-2.5 flex-1\">\n          <!-- Card Kanban -->\n          <div class=\"geist-card p-3 rounded-md text-xs cursor-pointer hover:border-[#444444]\">\n            <div class=\"flex items-center justify-between font-mono text-[10px] text-[#888888] mb-1\">\n              <span>\ud83c\uddf5\ud83c\udde6 DGCP-2025</span>\n              <span class=\"text-[#00e599]\">$4.2M</span>\n            </div>\n            <div class=\"font-medium text-white line-clamp-2\">Rehabilitaci\u00f3n de Puente Centenario</div>\n            <div class=\"mt-2 text-[10px] font-mono text-[#666666]\">Cierre en 14 d\u00edas</div>\n          </div>\n          <div class=\"geist-card p-3 rounded-md text-xs cursor-pointer hover:border-[#444444]\">\n            <div class=\"flex items-center justify-between font-mono text-[10px] text-[#888888] mb-1\">\n              <span>\ud83c\udde8\ud83c\uddf7 SICOP-CR</span>\n              <span class=\"text-[#00e599]\">$890K</span>\n            </div>\n            <div class=\"font-medium text-white line-clamp-2\">Licenciamiento Oracle Poder Judicial</div>\n            <div class=\"mt-2 text-[10px] font-mono text-[#666666]\">Cierre en 21 d\u00edas</div>\n          </div>\n        </div>\n      </div>\n\n      <!-- COL 2: EN EVALUACI\u00d3N -->\n      <div class=\"bg-[#080808] border border-[#1a1a1a] rounded-lg p-3 flex flex-col min-w-[210px]\">\n        <div class=\"flex items-center justify-between text-xs font-mono text-[#888888] pb-2 border-b border-[#1f1f1f]\">\n          <span class=\"text-white font-medium\">2. En Evaluaci\u00f3n</span>\n          <span class=\"bg-[#141414] px-1.5 py-0.2 rounded text-[11px]\">2</span>\n        </div>\n        <div class=\"mt-3 space-y-2.5 flex-1\">\n          <div class=\"geist-card p-3 rounded-md text-xs cursor-pointer border-l-2 border-l-[#0070f3]\">\n            <div class=\"flex items-center justify-between font-mono text-[10px] text-[#888888] mb-1\">\n              <span>\ud83c\udde8\ud83c\uddf4 SECOP II</span>\n              <span class=\"text-[#00e599]\">$1.8M</span>\n            </div>\n            <div class=\"font-medium text-white line-clamp-2\">Interventor\u00eda Hospital Militar Central</div>\n            <div class=\"mt-2 flex items-center justify-between text-[10px] font-mono\">\n              <span class=\"text-[#0070f3]\">Score: 78%</span>\n              <span class=\"text-[#888888]\">Equipo APU</span>\n            </div>\n          </div>\n        </div>\n      </div>\n\n      <!-- COL 3: AUDITANDO PLIEGO -->\n      <div class=\"bg-[#080808] border border-[#1a1a1a] rounded-lg p-3 flex flex-col min-w-[210px]\">\n        <div class=\"flex items-center justify-between text-xs font-mono text-[#888888] pb-2 border-b border-[#1f1f1f]\">\n          <span class=\"text-[#f5a623] font-medium\">3. Auditando Pliego</span>\n          <span class=\"bg-[#f5a623]/10 text-[#f5a623] px-1.5 py-0.2 rounded text-[11px]\">2</span>\n        </div>\n        <div class=\"mt-3 space-y-2.5 flex-1\">\n          <div class=\"geist-card p-3 rounded-md text-xs cursor-pointer border-l-2 border-l-[#f5a623] bg-[#f5a623]/5\">\n            <div class=\"flex items-center justify-between font-mono text-[10px] text-[#888888] mb-1\">\n              <span>\ud83c\uddf5\ud83c\udde6 METRO-L1</span>\n              <span class=\"text-[#f5a623] font-bold\">\u26a0\ufe0f RIESGO</span>\n            </div>\n            <div class=\"font-medium text-white line-clamp-2\">Mantenimiento Tracci\u00f3n El\u00e9ctrica</div>\n            <div class=\"mt-2 text-[10px] font-mono text-[#f5a623]\">2 Cl\u00e1usulas trampa halladas</div>\n          </div>\n        </div>\n      </div>\n\n      <!-- COL 4: OFERTA EN PREPARACI\u00d3N -->\n      <div class=\"bg-[#080808] border border-[#1a1a1a] rounded-lg p-3 flex flex-col min-w-[210px]\">\n        <div class=\"flex items-center justify-between text-xs font-mono text-[#888888] pb-2 border-b border-[#1f1f1f]\">\n          <span class=\"text-white font-medium\">4. Preparando Oferta</span>\n          <span class=\"bg-[#141414] px-1.5 py-0.2 rounded text-[11px]\">3</span>\n        </div>\n        <div class=\"mt-3 space-y-2.5 flex-1\">\n          <div class=\"geist-card p-3 rounded-md text-xs cursor-pointer\">\n            <div class=\"flex items-center justify-between font-mono text-[10px] text-[#888888] mb-1\">\n              <span>\ud83c\udde8\ud83c\uddf4 INVIAS-CUSIANA</span>\n              <span class=\"text-[#00e599]\">$11.4M</span>\n            </div>\n            <div class=\"font-medium text-white line-clamp-2\">Corredor Transversal Cusiana</div>\n            <div class=\"mt-2 flex items-center justify-between text-[10px] font-mono\">\n              <span class=\"text-[#00e599]\">Formatos: 4/5</span>\n              <span class=\"text-[#f5a623]\">18h restantes</span>\n            </div>\n          </div>\n        </div>\n      </div>\n\n      <!-- COL 5: PRESENTADA -->\n      <div class=\"bg-[#080808] border border-[#1a1a1a] rounded-lg p-3 flex flex-col min-w-[210px]\">\n        <div class=\"flex items-center justify-between text-xs font-mono text-[#888888] pb-2 border-b border-[#1f1f1f]\">\n          <span class=\"text-white font-medium\">5. Presentada</span>\n          <span class=\"bg-[#141414] px-1.5 py-0.2 rounded text-[11px]\">1</span>\n        </div>\n        <div class=\"mt-3 space-y-2.5 flex-1\">\n          <div class=\"geist-card p-3 rounded-md text-xs cursor-pointer\">\n            <div class=\"flex items-center justify-between font-mono text-[10px] text-[#888888] mb-1\">\n              <span>\ud83c\udde8\ud83c\uddf7 CCSS-EDUS</span>\n              <span class=\"text-[#888888]\">EN REVISI\u00d3N</span>\n            </div>\n            <div class=\"font-medium text-white line-clamp-2\">Servidores Hiperconvergentes</div>\n            <div class=\"mt-2 text-[10px] font-mono text-[#00e599]\">Radicado N\u00b0 9812-SICOP</div>\n          </div>\n        </div>\n      </div>\n\n      <!-- COL 6: ADJUDICADA -->\n      <div class=\"bg-[#080808] border border-[#1a1a1a] rounded-lg p-3 flex flex-col min-w-[210px]\">\n        <div class=\"flex items-center justify-between text-xs font-mono text-[#888888] pb-2 border-b border-[#1f1f1f]\">\n          <span class=\"text-[#00e599] font-medium\">6. Adjudicada</span>\n          <span class=\"bg-[#00e599]/15 text-[#00e599] px-1.5 py-0.2 rounded text-[11px]\">1</span>\n        </div>\n        <div class=\"mt-3 space-y-2.5 flex-1\">\n          <div class=\"geist-card p-3 rounded-md text-xs cursor-pointer border-l-2 border-l-[#00e599] bg-[#00e599]/5\">\n            <div class=\"flex items-center justify-between font-mono text-[10px] text-[#888888] mb-1\">\n              <span>\ud83c\uddf5\ud83c\udde6 ACP-CANAL</span>\n              <span class=\"text-[#00e599]\">GANADA</span>\n            </div>\n            <div class=\"font-medium text-white line-clamp-2\">Suministro de V\u00e1lvulas Esclusas Miraflores</div>\n            <div class=\"mt-2 text-[10px] font-mono text-white font-semibold\">$3,200,000 USD</div>\n          </div>\n        </div>\n      </div>\n\n    </div>\n  </main>\n\n  <!-- ========================================================================= -->\n  <!-- SECCI\u00d3N 7: CENTRO DE NOTIFICACIONES MULTICANAL                           -->\n  <!-- ========================================================================= -->\n  <main id=\"view-notifications\" class=\"view-content max-w-[1440px] mx-auto px-4 sm:px-6 pt-8\">\n    <div class=\"pb-6 border-b border-[#1f1f1f]\">\n      <div class=\"inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-mono bg-[#111111] text-[#888888] border border-[#2e2e2e]\">\n        SISTEMA DE DESPACHO MULTI-PROTOCOLO\n      </div>\n      <h2 class=\"text-2xl font-bold tracking-tight text-white mt-1\">Centro de Alertas Tempranas y Webhooks</h2>\n      <p class=\"text-xs text-[#888888]\">Configura c\u00f3mo y cu\u00e1ndo tu equipo de licitaciones y directivos reciben alertas de adendas, suspensiones y nuevos pliegos.</p>\n    </div>\n\n    <div class=\"grid grid-cols-1 lg:grid-cols-12 gap-8 mt-6\">\n      \n      <!-- Canales de Env\u00edo (8 Cols) -->\n      <div class=\"lg:col-span-8 space-y-4\">\n        \n        <!-- Canal 1: Dossier Diario 7:00 AM -->\n        <div class=\"geist-card p-4 rounded-xl flex items-start justify-between gap-4\">\n          <div class=\"flex items-start gap-3\">\n            <div class=\"w-10 h-10 rounded-lg bg-[#111111] border border-[#2e2e2e] flex items-center justify-center text-white text-lg\">\n              \u2709\ufe0f\n            </div>\n            <div>\n              <div class=\"flex items-center gap-2\">\n                <h4 class=\"text-sm font-semibold text-white\">Dossier Matutino por Correo (7:00 a.m.)</h4>\n                <span class=\"text-[10px] font-mono bg-[#00e599]/10 text-[#00e599] border border-[#00e599]/30 px-1.5 py-0.2 rounded\">ACTIVO</span>\n              </div>\n              <p class=\"text-xs text-[#888888] mt-1\">\n                Resumen ejecutivo diario con licitaciones filtradas por sus c\u00f3digos UNSPSC y rango de presupuesto antes de que inicie la jornada laboral.\n              </p>\n              <div class=\"mt-2 text-xs font-mono text-[#666666]\">Destinatarios: licitaciones@constructora.com, presidencia@constructora.com</div>\n            </div>\n          </div>\n          <label class=\"relative inline-flex items-center cursor-pointer\">\n            <input type=\"checkbox\" checked class=\"sr-only peer\">\n            <div class=\"w-9 h-5 bg-[#222222] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#0070f3]\"></div>\n          </label>\n        </div>\n\n        <!-- Canal 2: Slack & Teams Webhooks -->\n        <div class=\"geist-card p-4 rounded-xl flex items-start justify-between gap-4\">\n          <div class=\"flex items-start gap-3\">\n            <div class=\"w-10 h-10 rounded-lg bg-[#111111] border border-[#2e2e2e] flex items-center justify-center text-white text-lg\">\n              \u26a1\n            </div>\n            <div class=\"flex-1\">\n              <div class=\"flex items-center gap-2\">\n                <h4 class=\"text-sm font-semibold text-white\">Integraci\u00f3n Slack / Microsoft Teams (Webhooks)</h4>\n                <span class=\"text-[10px] font-mono bg-[#0070f3]/10 text-[#0070f3] border border-[#0070f3]/30 px-1.5 py-0.2 rounded\">CANAL #LICITACIONES-WAR-ROOM</span>\n              </div>\n              <p class=\"text-xs text-[#888888] mt-1\">\n                Disparo instant\u00e1neo ante publicaci\u00f3n de adendas, modificaciones al cronograma o respuestas a solicitudes de aclaraci\u00f3n.\n              </p>\n              <div class=\"mt-2 flex items-center gap-2\">\n                <input type=\"text\" value=\"https://hooks.slack.com/services/T00/B00/X891726354...\" class=\"w-full max-w-md h-7 px-2 text-xs font-mono bg-black border border-[#2e2e2e] rounded text-[#888888]\" readonly>\n                <button class=\"h-7 px-2.5 text-xs font-mono bg-[#1a1a1a] border border-[#333333] hover:text-white rounded\">Test Ping</button>\n              </div>\n            </div>\n          </div>\n          <label class=\"relative inline-flex items-center cursor-pointer\">\n            <input type=\"checkbox\" checked class=\"sr-only peer\">\n            <div class=\"w-9 h-5 bg-[#222222] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#0070f3]\"></div>\n          </label>\n        </div>\n\n        <!-- Canal 3: WhatsApp Ejecutivo -->\n        <div class=\"geist-card p-4 rounded-xl flex items-start justify-between gap-4\">\n          <div class=\"flex items-start gap-3\">\n            <div class=\"w-10 h-10 rounded-lg bg-[#111111] border border-[#2e2e2e] flex items-center justify-center text-white text-lg\">\n              \ud83d\udcac\n            </div>\n            <div>\n              <div class=\"flex items-center gap-2\">\n                <h4 class=\"text-sm font-semibold text-white\">Alertas VIP Instant\u00e1neas por WhatsApp</h4>\n                <span class=\"text-[10px] font-mono bg-[#00e599]/10 text-[#00e599] border border-[#00e599]/30 px-1.5 py-0.2 rounded\">SOLO DIRECTIVOS</span>\n              </div>\n              <p class=\"text-xs text-[#888888] mt-1\">\n                Notificaci\u00f3n ultra-r\u00e1pida directamente al tel\u00e9fono celular del representante legal ante actos de adjudicaci\u00f3n o descalificaci\u00f3n preliminar.\n              </p>\n              <div class=\"mt-2 text-xs font-mono text-[#666666]\">+507 6899-0012 (Panam\u00e1), +57 310 455-8900 (Colombia)</div>\n            </div>\n          </div>\n          <label class=\"relative inline-flex items-center cursor-pointer\">\n            <input type=\"checkbox\" checked class=\"sr-only peer\">\n            <div class=\"w-9 h-5 bg-[#222222] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#0070f3]\"></div>\n          </label>\n        </div>\n\n      </div>\n\n      <!-- Bandeja Hist\u00f3rica de Notificaciones (4 Cols) -->\n      <div class=\"lg:col-span-4 geist-card p-4 rounded-xl\">\n        <div class=\"flex items-center justify-between pb-3 border-b border-[#1f1f1f]\">\n          <span class=\"text-xs font-mono font-medium text-white\">HISTORIAL EN TIEMPO REAL</span>\n          <span class=\"text-[10px] font-mono text-[#888888]\">\u00daltimas 24h</span>\n        </div>\n        <div class=\"mt-3 space-y-3\">\n          <div class=\"p-2.5 rounded bg-[#111111] border border-[#222222] text-xs space-y-1\">\n            <div class=\"flex items-center justify-between font-mono text-[10px]\">\n              <span class=\"text-[#f5a623]\">ADENDA PUBLICADA</span>\n              <span class=\"text-[#666666]\">Hace 12m</span>\n            </div>\n            <div class=\"font-medium text-white\">Metro de Panam\u00e1: Modificaci\u00f3n de fecha de homologaci\u00f3n</div>\n            <div class=\"text-[11px] text-[#888888]\">Se traslada para el 4 de Marzo a solicitud de 3 proponentes.</div>\n          </div>\n\n          <div class=\"p-2.5 rounded bg-[#111111] border border-[#222222] text-xs space-y-1\">\n            <div class=\"flex items-center justify-between font-mono text-[10px]\">\n              <span class=\"text-[#00e599]\">RESPUESTA A ACLARACI\u00d3N</span>\n              <span class=\"text-[#666666]\">Hace 1h</span>\n            </div>\n            <div class=\"font-medium text-white\">INVIAS: Acogida observaci\u00f3n sobre \u00edndices RUP</div>\n            <div class=\"text-[11px] text-[#888888]\">La entidad acepta el promedio de endeudamiento en consorcio.</div>\n          </div>\n\n          <div class=\"p-2.5 rounded bg-[#111111] border border-[#222222] text-xs space-y-1\">\n            <div class=\"flex items-center justify-between font-mono text-[10px]\">\n              <span class=\"text-[#0070f3]\">NUEVO PLIEGO RELEVANTE</span>\n              <span class=\"text-[#666666]\">Hace 3h</span>\n            </div>\n            <div class=\"font-medium text-white\">SICOP: CCSS publica compra de servidores $5.6M</div>\n            <div class=\"text-[11px] text-[#888888]\">Coincidencia del 98% con su portafolio UNSPSC registrado.</div>\n          </div>\n        </div>\n      </div>\n\n    </div>\n  </main>\n\n  <!-- ========================================================================= -->\n  <!-- SECCI\u00d3N 8: PLANES, BENEFICIOS Y FACTURACI\u00d3N EMPRESARIAL                  -->\n  <!-- ========================================================================= -->\n  <main id=\"view-pricing\" class=\"view-content max-w-[1440px] mx-auto px-4 sm:px-6 pt-8\">\n    <div class=\"text-center max-w-2xl mx-auto mb-10\">\n      <span class=\"text-xs font-mono text-[#0070f3] bg-[#0070f3]/10 border border-[#0070f3]/30 px-2.5 py-1 rounded-full uppercase\">\n        Suscripci\u00f3n Corporativa Sin Fricci\u00f3n\n      </span>\n      <h2 class=\"text-3xl font-bold tracking-tight text-white mt-3\">Planes dise\u00f1ados para ganar licitaciones</h2>\n      <p class=\"text-xs sm:text-sm text-[#888888] mt-2\">\n        Facturaci\u00f3n con soporte de impuestos y deducci\u00f3n fiscal completa ante la DGI (Panam\u00e1), DIAN (Colombia) y Ministerio de Hacienda (Costa Rica).\n      </p>\n    </div>\n\n    <!-- Comparativa de Planes -->\n    <div class=\"grid grid-cols-1 md:grid-cols-3 gap-6\">\n      \n      <!-- PLAN 1: GRATUITO -->\n      <div class=\"geist-card p-6 rounded-xl flex flex-col justify-between\">\n        <div>\n          <div class=\"text-xs font-mono text-[#888888] uppercase\">Explorador B\u00e1sico</div>\n          <div class=\"text-2xl font-bold font-mono text-white mt-2\">$0 <span class=\"text-xs font-normal text-[#666666]\">/ para siempre</span></div>\n          <p class=\"text-xs text-[#888888] mt-2\">Para profesionales independientes que exploran oportunidades en Panam\u00e1Compra, SECOP II y SICOP.</p>\n          \n          <ul class=\"mt-6 space-y-2.5 text-xs text-[#eaeaea] border-t border-[#1f1f1f] pt-4\">\n            <li class=\"flex items-center gap-2\">\u2713 B\u00fasqueda universal ilimitada</li>\n            <li class=\"flex items-center gap-2\">\u2713 Alertas por correo 1 vez por semana</li>\n            <li class=\"flex items-center gap-2 text-[#666666]\">\u2715 Diagn\u00f3sticos de IA deshabilitados</li>\n            <li class=\"flex items-center gap-2 text-[#666666]\">\u2715 Plantillas oficiales no incluidas</li>\n          </ul>\n        </div>\n        <button class=\"w-full mt-6 h-9 text-xs font-medium bg-[#161616] hover:bg-[#222222] border border-[#2e2e2e] text-white rounded-md transition-colors\">\n          Cuenta Gratuita\n        </button>\n      </div>\n\n      <!-- PLAN 2: PRO INDIVIDUAL -->\n      <div class=\"geist-card p-6 rounded-xl flex flex-col justify-between border-2 border-[#0070f3]\">\n        <div>\n          <div class=\"flex items-center justify-between\">\n            <span class=\"text-xs font-mono text-[#0070f3] uppercase font-semibold\">Pro Licitador</span>\n            <span class=\"text-[10px] font-mono bg-[#0070f3] text-white px-2 py-0.5 rounded-full\">POPULAR</span>\n          </div>\n          <div class=\"text-2xl font-bold font-mono text-white mt-2\">$49 <span class=\"text-xs font-normal text-[#888888]\">USD / mes</span></div>\n          <p class=\"text-xs text-[#888888] mt-2\">Para especialistas en licitaciones que requieren auditar pliegos y recibir adendas en tiempo real.</p>\n          \n          <ul class=\"mt-6 space-y-2.5 text-xs text-[#eaeaea] border-t border-[#1f1f1f] pt-4\">\n            <li class=\"flex items-center gap-2\">\u2713 Alertas multicanal (Email 7am + Push)</li>\n            <li class=\"flex items-center gap-2\">\u2713 25 Diagn\u00f3sticos de IA por mes</li>\n            <li class=\"flex items-center gap-2\">\u2713 Detecci\u00f3n de cl\u00e1usulas trampa en pliegos</li>\n            <li class=\"flex items-center gap-2\">\u2713 30% de descuento en el cat\u00e1logo de plantillas</li>\n          </ul>\n        </div>\n        <button onclick=\"openModal('checkout-modal')\" class=\"w-full mt-6 h-9 text-xs font-medium bg-white text-black hover:bg-[#eaeaea] rounded-md transition-colors font-semibold\">\n          Iniciar Prueba Pro (14 d\u00edas)\n        </button>\n      </div>\n\n      <!-- PLAN 3: EQUIPOS Y CONSORCIOS -->\n      <div class=\"geist-card p-6 rounded-xl flex flex-col justify-between\">\n        <div>\n          <div class=\"text-xs font-mono text-[#00e599] uppercase font-semibold\">Equipos & Corporaciones</div>\n          <div class=\"text-2xl font-bold font-mono text-white mt-2\">$189 <span class=\"text-xs font-normal text-[#888888]\">USD / mes</span></div>\n          <p class=\"text-xs text-[#888888] mt-2\">Para firmas constructoras, farmac\u00e9uticas y consorcios que operan en m\u00faltiples pa\u00edses simult\u00e1neamente.</p>\n          \n          <ul class=\"mt-6 space-y-2.5 text-xs text-[#eaeaea] border-t border-[#1f1f1f] pt-4\">\n            <li class=\"flex items-center gap-2\">\u2713 Asientos ilimitados para colaboradores</li>\n            <li class=\"flex items-center gap-2\">\u2713 Diagn\u00f3sticos IA ilimitados y Win-Rate Score</li>\n            <li class=\"flex items-center gap-2\">\u2713 Generador Asistido IA: Diligenciamiento de pliegos</li>\n            <li class=\"flex items-center gap-2\">\u2713 Acceso TOTAL a las 35+ plantillas oficiales</li>\n            <li class=\"flex items-center gap-2\">\u2713 Webhooks Slack/Teams y WhatsApp Directivo</li>\n          </ul>\n        </div>\n        <button onclick=\"openModal('checkout-modal')\" class=\"w-full mt-6 h-9 text-xs font-medium bg-white text-black hover:bg-[#eaeaea] rounded-md transition-colors font-semibold\">\n          Comenzar Plan Equipos\n        </button>\n      </div>\n\n    </div>\n\n    <!-- Pasarelas de Pago Locales y Facturaci\u00f3n Fiscal -->\n    <div class=\"mt-10 geist-card p-6 rounded-xl\">\n      <div class=\"flex flex-col md:flex-row md:items-center justify-between pb-6 border-b border-[#1f1f1f] gap-4\">\n        <div>\n          <h3 class=\"text-base font-semibold text-white\">M\u00e9todos de Pago Locales y Moneda Oficial</h3>\n          <p class=\"text-xs text-[#888888]\">Procesamiento instant\u00e1neo en moneda local o tarjeta internacional de cr\u00e9dito empresarial.</p>\n        </div>\n        <div class=\"flex flex-wrap items-center gap-3\">\n          <span class=\"px-2.5 py-1 rounded bg-[#111111] border border-[#2e2e2e] text-xs font-mono\">\ud83c\uddf5\ud83c\udde6 Yappy Comercial</span>\n          <span class=\"px-2.5 py-1 rounded bg-[#111111] border border-[#2e2e2e] text-xs font-mono\">\ud83c\udde8\ud83c\uddf4 PSE / Nequi / Bancolombia</span>\n          <span class=\"px-2.5 py-1 rounded bg-[#111111] border border-[#2e2e2e] text-xs font-mono\">\ud83c\udde8\ud83c\uddf7 SINPE M\u00f3vil Empresas</span>\n          <span class=\"px-2.5 py-1 rounded bg-[#111111] border border-[#2e2e2e] text-xs font-mono\">\ud83d\udcb3 Visa / Master / AMEX</span>\n        </div>\n      </div>\n\n      <!-- Historial de Facturas con Validaci\u00f3n Fiscal -->\n      <div class=\"mt-6\">\n        <h4 class=\"text-xs font-mono text-[#888888] uppercase mb-3\">Historial de Facturaci\u00f3n Electr\u00f3nica Fiscal</h4>\n        <div class=\"border border-[#1f1f1f] rounded-lg overflow-x-auto\">\n          <table class=\"w-full text-left text-xs font-mono\">\n            <thead class=\"bg-[#111111] text-[#888888] border-b border-[#1f1f1f]\">\n              <tr>\n                <th class=\"p-3\">Factura N\u00b0</th>\n                <th class=\"p-3\">Fecha</th>\n                <th class=\"p-3\">Monto</th>\n                <th class=\"p-3\">Jurisdicci\u00f3n Fiscal</th>\n                <th class=\"p-3\">Estado DIAN / DGI / Hacienda</th>\n                <th class=\"p-3 text-right\">Comprobante</th>\n              </tr>\n            </thead>\n            <tbody class=\"divide-y divide-[#1f1f1f]\">\n              <tr class=\"hover:bg-[#0f0f0f]\">\n                <td class=\"p-3 font-semibold text-white\">INV-2025-0912</td>\n                <td class=\"p-3 text-[#888888]\">15 Feb 2025</td>\n                <td class=\"p-3 text-white\">$189.00 USD</td>\n                <td class=\"p-3\">\ud83c\udde8\ud83c\uddf4 Colombia (NIT 901.442.110-3)</td>\n                <td class=\"p-3\"><span class=\"text-[#00e599] bg-[#00e599]/10 px-2 py-0.5 rounded\">DIAN Validada (CUFE \u2713)</span></td>\n                <td class=\"p-3 text-right\"><button class=\"text-[#0070f3] hover:underline\">Descargar XML / PDF</button></td>\n              </tr>\n              <tr class=\"hover:bg-[#0f0f0f]\">\n                <td class=\"p-3 font-semibold text-white\">INV-2025-0744</td>\n                <td class=\"p-3 text-[#888888]\">15 Ene 2025</td>\n                <td class=\"p-3 text-white\">$189.00 USD</td>\n                <td class=\"p-3\">\ud83c\uddf5\ud83c\udde6 Panam\u00e1 (RUC 155698-1-2021 DV 44)</td>\n                <td class=\"p-3\"><span class=\"text-[#00e599] bg-[#00e599]/10 px-2 py-0.5 rounded\">DGI Autorizada (CAFE \u2713)</span></td>\n                <td class=\"p-3 text-right\"><button class=\"text-[#0070f3] hover:underline\">Descargar Factura</button></td>\n              </tr>\n            </tbody>\n          </table>\n        </div>\n      </div>\n    </div>\n  </main>\n\n  <!-- ========================================================================= -->\n  <!-- SECCI\u00d3N 2: ONBOARDING CORPORATIVO GUIADO (WIZARD DE 4 PASOS)             -->\n  <!-- ========================================================================= -->\n  <main id=\"view-onboarding\" class=\"view-content max-w-3xl mx-auto px-4 sm:px-6 pt-10\">\n    <!-- Stepper de 4 Pasos -->\n    <div class=\"mb-8\">\n      <div class=\"flex items-center justify-between text-xs font-mono text-[#888888] mb-3\">\n        <span class=\"text-white font-medium\" id=\"step-title-label\">PASO 1 DE 4: DATOS LEGALES DE LA EMPRESA</span>\n        <span id=\"step-percentage\">25% COMPLETADO</span>\n      </div>\n      <div class=\"w-full bg-[#161616] h-1 rounded-full overflow-hidden\">\n        <div id=\"step-progress-bar\" class=\"bg-white h-full transition-all duration-300\" style=\"width: 25%\"></div>\n      </div>\n      <div class=\"flex justify-between mt-3 text-[11px] font-mono text-[#666666]\">\n        <span class=\"text-white\">1. Legal</span>\n        <span>2. Rubros UNSPSC</span>\n        <span>3. Acreditaci\u00f3n Activa</span>\n        <span>4. Equipo y Roles</span>\n      </div>\n    </div>\n\n    <!-- Contenedor del Formulario Onboarding -->\n    <div class=\"geist-card p-6 sm:p-8 rounded-xl border border-[#2e2e2e]\">\n      \n      <!-- PASO 1: DATOS LEGALES -->\n      <div id=\"wizard-step-1\" class=\"wizard-step space-y-4\">\n        <div>\n          <h3 class=\"text-lg font-bold text-white\">Identificaci\u00f3n Jur\u00eddica y Domicilio Fiscal</h3>\n          <p class=\"text-xs text-[#888888]\">Ingrese la informaci\u00f3n registrada ante la entidad tributaria del pa\u00eds sede.</p>\n        </div>\n\n        <div class=\"space-y-3 pt-2\">\n          <div>\n            <label class=\"block text-xs font-medium text-[#888888] mb-1\">Raz\u00f3n Social Completa</label>\n            <input type=\"text\" value=\"Consorcio de Ingenier\u00eda Andina S.A.S.\" class=\"w-full h-10 px-3 text-xs sm:text-sm text-white bg-black border border-[#2e2e2e] rounded-md focus:border-white focus:outline-none\">\n          </div>\n\n          <div class=\"grid grid-cols-1 sm:grid-cols-2 gap-3\">\n            <div>\n              <label class=\"block text-xs font-medium text-[#888888] mb-1\">Pa\u00eds Sede</label>\n              <select id=\"country-select-step\" onchange=\"updateTaxIdLabel()\" class=\"w-full h-10 px-3 text-xs sm:text-sm text-white bg-black border border-[#2e2e2e] rounded-md focus:border-white focus:outline-none\">\n                <option value=\"PA\">\ud83c\uddf5\ud83c\udde6 Panam\u00e1</option>\n                <option value=\"CO\" selected>\ud83c\udde8\ud83c\uddf4 Colombia</option>\n                <option value=\"CR\">\ud83c\udde8\ud83c\uddf7 Costa Rica</option>\n              </select>\n            </div>\n            <div>\n              <label id=\"tax-id-label\" class=\"block text-xs font-medium text-[#888888] mb-1\">NIT y D\u00edgito de Verificaci\u00f3n (Colombia)</label>\n              <input type=\"text\" value=\"901.442.110-3\" class=\"w-full h-10 px-3 text-xs sm:text-sm text-white bg-black border border-[#2e2e2e] rounded-md focus:border-white focus:outline-none font-mono\">\n            </div>\n          </div>\n\n          <div>\n            <label class=\"block text-xs font-medium text-[#888888] mb-1\">Rango de Facturaci\u00f3n Anual Consolidada (USD)</label>\n            <select class=\"w-full h-10 px-3 text-xs sm:text-sm text-white bg-black border border-[#2e2e2e] rounded-md focus:border-white focus:outline-none\">\n              <option>Menos de $500,000 USD (Mipyme)</option>\n              <option selected>$500,000 USD - $2,500,000 USD (Mediana Empresa)</option>\n              <option>$2,500,000 USD - $10,000,000 USD (Gran Proponente)</option>\n              <option>M\u00e1s de $10,000,000 USD (Corporativo Multinacional)</option>\n            </select>\n          </div>\n        </div>\n\n        <div class=\"pt-6 border-t border-[#1f1f1f] flex justify-end\">\n          <button onclick=\"goToStep(2)\" class=\"h-9 px-5 text-xs font-semibold text-black bg-white hover:bg-[#eaeaea] rounded-md transition-colors\">\n            Continuar al Paso 2 \u2192\n          </button>\n        </div>\n      </div>\n\n      <!-- PASO 2: MACRO-CATEGOR\u00cdAS -->\n      <div id=\"wizard-step-2\" class=\"wizard-step space-y-4 hidden\">\n        <div>\n          <h3 class=\"text-lg font-bold text-white\">Selecci\u00f3n de Macro-Categor\u00edas y C\u00f3digos UNSPSC</h3>\n          <p class=\"text-xs text-[#888888]\">Seleccione los rubros contractuales en los que su firma compite habitualmente.</p>\n        </div>\n\n        <div class=\"grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-2\">\n          <label class=\"flex items-center gap-2 p-2.5 rounded bg-black border border-[#2e2e2e] text-xs cursor-pointer hover:border-[#444444]\">\n            <input type=\"checkbox\" checked class=\"rounded bg-black border-[#444444] text-[#0070f3]\">\n            <span class=\"text-white\">Obras Civiles</span>\n          </label>\n          <label class=\"flex items-center gap-2 p-2.5 rounded bg-black border border-[#2e2e2e] text-xs cursor-pointer hover:border-[#444444]\">\n            <input type=\"checkbox\" checked class=\"rounded bg-black border-[#444444] text-[#0070f3]\">\n            <span class=\"text-white\">Tecnolog\u00eda & Cloud</span>\n          </label>\n          <label class=\"flex items-center gap-2 p-2.5 rounded bg-black border border-[#2e2e2e] text-xs cursor-pointer hover:border-[#444444]\">\n            <input type=\"checkbox\" class=\"rounded bg-black border-[#444444] text-[#0070f3]\">\n            <span class=\"text-white\">Salud & F\u00e1rmacos</span>\n          </label>\n          <label class=\"flex items-center gap-2 p-2.5 rounded bg-black border border-[#2e2e2e] text-xs cursor-pointer hover:border-[#444444]\">\n            <input type=\"checkbox\" checked class=\"rounded bg-black border-[#444444] text-[#0070f3]\">\n            <span class=\"text-white\">Mantenimiento</span>\n          </label>\n          <label class=\"flex items-center gap-2 p-2.5 rounded bg-black border border-[#2e2e2e] text-xs cursor-pointer hover:border-[#444444]\">\n            <input type=\"checkbox\" class=\"rounded bg-black border-[#444444] text-[#0070f3]\">\n            <span class=\"text-white\">Transporte & Flota</span>\n          </label>\n          <label class=\"flex items-center gap-2 p-2.5 rounded bg-black border border-[#2e2e2e] text-xs cursor-pointer hover:border-[#444444]\">\n            <input type=\"checkbox\" class=\"rounded bg-black border-[#444444] text-[#0070f3]\">\n            <span class=\"text-white\">Alimentos & PAE</span>\n          </label>\n          <label class=\"flex items-center gap-2 p-2.5 rounded bg-black border border-[#2e2e2e] text-xs cursor-pointer hover:border-[#444444]\">\n            <input type=\"checkbox\" checked class=\"rounded bg-black border-[#444444] text-[#0070f3]\">\n            <span class=\"text-white\">Consultor\u00eda</span>\n          </label>\n          <label class=\"flex items-center gap-2 p-2.5 rounded bg-black border border-[#2e2e2e] text-xs cursor-pointer hover:border-[#444444]\">\n            <input type=\"checkbox\" class=\"rounded bg-black border-[#444444] text-[#0070f3]\">\n            <span class=\"text-white\">Seguridad Privada</span>\n          </label>\n          <label class=\"flex items-center gap-2 p-2.5 rounded bg-black border border-[#2e2e2e] text-xs cursor-pointer hover:border-[#444444]\">\n            <input type=\"checkbox\" class=\"rounded bg-black border-[#444444] text-[#0070f3]\">\n            <span class=\"text-white\">Limpieza & Aseo</span>\n          </label>\n        </div>\n\n        <div>\n          <label class=\"block text-xs font-medium text-[#888888] mb-1\">Segmentos UNSPSC Clave (separados por coma)</label>\n          <input type=\"text\" value=\"72101500, 72141000, 43211500, 81101500\" class=\"w-full h-10 px-3 text-xs text-white bg-black border border-[#2e2e2e] rounded-md font-mono\">\n        </div>\n\n        <div class=\"pt-6 border-t border-[#1f1f1f] flex justify-between\">\n          <button onclick=\"goToStep(1)\" class=\"h-9 px-4 text-xs font-medium text-[#888888] hover:text-white\">\u2190 Volver</button>\n          <button onclick=\"goToStep(3)\" class=\"h-9 px-5 text-xs font-semibold text-black bg-white hover:bg-[#eaeaea] rounded-md transition-colors\">\n            Continuar al Paso 3 \u2192\n          </button>\n        </div>\n      </div>\n\n      <!-- PASO 3: ACREDITACI\u00d3N ACTIVA -->\n      <div id=\"wizard-step-3\" class=\"wizard-step space-y-4 hidden\">\n        <div>\n          <h3 class=\"text-lg font-bold text-white\">Acreditaci\u00f3n Legal y Certificaciones Activas</h3>\n          <p class=\"text-xs text-[#888888]\">Vinculaci\u00f3n con los registros oficiales de proponentes seg\u00fan el pa\u00eds.</p>\n        </div>\n\n        <div class=\"space-y-3 pt-2\">\n          <div class=\"p-3 rounded-lg bg-black border border-[#2e2e2e]\">\n            <div class=\"flex items-center justify-between text-xs font-mono\">\n              <span class=\"text-white font-semibold\">\ud83c\udde8\ud83c\uddf4 Registro \u00danico de Proponentes (RUP - Colombia)</span>\n              <span class=\"text-[#00e599]\">CONECTADO \u2713</span>\n            </div>\n            <div class=\"mt-2 grid grid-cols-3 gap-2 text-center text-xs font-mono\">\n              <div class=\"p-2 rounded bg-[#0f0f0f] border border-[#1f1f1f]\">\n                <div class=\"text-[10px] text-[#888888]\">Liquidez</div>\n                <div class=\"text-white font-bold\">2.80</div>\n              </div>\n              <div class=\"p-2 rounded bg-[#0f0f0f] border border-[#1f1f1f]\">\n                <div class=\"text-[10px] text-[#888888]\">Endeudamiento</div>\n                <div class=\"text-[#f5a623] font-bold\">69.4%</div>\n              </div>\n              <div class=\"p-2 rounded bg-[#0f0f0f] border border-[#1f1f1f]\">\n                <div class=\"text-[10px] text-[#888888]\">Cobertura Int.</div>\n                <div class=\"text-white font-bold\">4.2x</div>\n              </div>\n            </div>\n          </div>\n\n          <div class=\"p-3 rounded-lg bg-black border border-[#2e2e2e]\">\n            <div class=\"flex items-center justify-between text-xs font-mono\">\n              <span class=\"text-white font-semibold\">\ud83c\uddf5\ud83c\udde6 Registro de Proponentes DGCP (Panam\u00e1)</span>\n              <button class=\"text-xs text-[#0070f3] hover:underline font-mono\">Vincular RUC</button>\n            </div>\n          </div>\n\n          <div class=\"p-3 rounded-lg bg-black border border-[#2e2e2e]\">\n            <div class=\"flex items-center justify-between text-xs font-mono\">\n              <span class=\"text-white font-semibold\">\ud83c\udde8\ud83c\uddf7 SICOP con Firma Digital BCCR (Costa Rica)</span>\n              <button class=\"text-xs text-[#0070f3] hover:underline font-mono\">Validar Certificado</button>\n            </div>\n          </div>\n        </div>\n\n        <div class=\"pt-6 border-t border-[#1f1f1f] flex justify-between\">\n          <button onclick=\"goToStep(2)\" class=\"h-9 px-4 text-xs font-medium text-[#888888] hover:text-white\">\u2190 Volver</button>\n          <button onclick=\"goToStep(4)\" class=\"h-9 px-5 text-xs font-semibold text-black bg-white hover:bg-[#eaeaea] rounded-md transition-colors\">\n            Continuar al Paso 4 \u2192\n          </button>\n        </div>\n      </div>\n\n      <!-- PASO 4: EQUIPO Y ROLES -->\n      <div id=\"wizard-step-4\" class=\"wizard-step space-y-4 hidden\">\n        <div>\n          <h3 class=\"text-lg font-bold text-white\">Invitaci\u00f3n y Gesti\u00f3n del Equipo de Licitaciones</h3>\n          <p class=\"text-xs text-[#888888]\">Asigne colaboradores con permisos espec\u00edficos para blindar la confidencialidad.</p>\n        </div>\n\n        <div class=\"space-y-3 pt-2\">\n          <div class=\"flex gap-2\">\n            <input type=\"email\" placeholder=\"correo.abogado@constructora.com\" class=\"flex-1 h-10 px-3 text-xs text-white bg-black border border-[#2e2e2e] rounded-md\">\n            <select class=\"h-10 px-3 text-xs text-white bg-black border border-[#2e2e2e] rounded-md\">\n              <option>Auditor Legal y Financiero</option>\n              <option>Preparador de Ofertas / APU</option>\n              <option>Administrador General</option>\n            </select>\n            <button class=\"px-3 text-xs font-medium text-black bg-white hover:bg-[#eaeaea] rounded-md font-mono\">Invitar</button>\n          </div>\n\n          <div class=\"border border-[#1f1f1f] rounded-lg divide-y divide-[#1f1f1f] text-xs font-mono\">\n            <div class=\"p-3 flex items-center justify-between\">\n              <div>\n                <div class=\"text-white\">carlos.mendoza@constructora.com</div>\n                <div class=\"text-[#666666] text-[10px]\">Preparador de Ofertas / APU (Ingeniero Senior)</div>\n              </div>\n              <span class=\"text-[#00e599] text-[10px]\">ACTIVO</span>\n            </div>\n            <div class=\"p-3 flex items-center justify-between\">\n              <div>\n                <div class=\"text-white\">dra.valenzuela@legal-andina.com</div>\n                <div class=\"text-[#666666] text-[10px]\">Auditor Legal y P\u00f3lizas</div>\n              </div>\n              <span class=\"text-[#f5a623] text-[10px]\">INVITACI\u00d3N PENDIENTE</span>\n            </div>\n          </div>\n        </div>\n\n        <div class=\"pt-6 border-t border-[#1f1f1f] flex justify-between\">\n          <button onclick=\"goToStep(3)\" class=\"h-9 px-4 text-xs font-medium text-[#888888] hover:text-white\">\u2190 Volver</button>\n          <button onclick=\"switchView('explorer')\" class=\"h-9 px-6 text-xs font-semibold text-black bg-white hover:bg-[#eaeaea] rounded-md transition-colors font-mono\">\n            Finalizar Onboarding e Ir al Pipeline \u2713\n          </button>\n        </div>\n      </div>\n\n    </div>\n  </main>\n\n  <!-- ========================================================================= -->\n  <!-- MODAL: AUTENTICACI\u00d3N EMPRESARIAL, SSO Y 2FA                              -->\n  <!-- ========================================================================= -->\n  <div id=\"auth-modal\" class=\"fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4\">\n    <div class=\"geist-card w-full max-w-[420px] p-6 rounded-xl border border-[#2e2e2e] shadow-2xl relative\">\n      <button onclick=\"closeModal('auth-modal')\" class=\"absolute top-4 right-4 text-[#888888] hover:text-white\">\u2715</button>\n\n      <div class=\"text-center mb-6\">\n        <svg height=\"24\" viewBox=\"0 0 115 100\" fill=\"currentColor\" class=\"mx-auto text-white mb-2\">\n          <path d=\"M57.5 0L115 100H0L57.5 0z\" />\n        </svg>\n        <h3 class=\"text-lg font-bold text-white tracking-tight\">Acceso Corporativo Seguro</h3>\n        <p class=\"text-xs text-[#888888] mt-1\">Plataforma de Compras P\u00fablicas de Panam\u00e1, Colombia y Costa Rica</p>\n      </div>\n\n      <!-- Botones SSO -->\n      <div class=\"space-y-2.5\">\n        <button class=\"w-full h-10 px-4 text-xs font-medium text-white bg-black border border-[#2e2e2e] hover:border-[#444444] rounded-md flex items-center justify-center gap-2.5 transition-colors\">\n          <svg class=\"w-4 h-4\" viewBox=\"0 0 24 24\"><path fill=\"#4285F4\" d=\"M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z\"/><path fill=\"#34A853\" d=\"M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.27 21.36 7.35 24 12 24z\"/><path fill=\"#FBBC05\" d=\"M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.14-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.98 0 12s.45 3.82 1.25 5.42l4.03-3.15z\"/><path fill=\"#EA4335\" d=\"M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.35 0 3.27 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z\"/></svg>\n          Google Workspace (Empresas)\n        </button>\n        <button class=\"w-full h-10 px-4 text-xs font-medium text-white bg-black border border-[#2e2e2e] hover:border-[#444444] rounded-md flex items-center justify-center gap-2.5 transition-colors\">\n          <svg class=\"w-4 h-4\" viewBox=\"0 0 24 24\"><path fill=\"#f25022\" d=\"M1 1h10v10H1z\"/><path fill=\"#00a4ef\" d=\"M1 13h10v10H1z\"/><path fill=\"#7fba00\" d=\"M13 1h10v10H13z\"/><path fill=\"#ffb900\" d=\"M13 13h10v10H13z\"/></svg>\n          Microsoft Entra ID / Office 365\n        </button>\n        <button class=\"w-full h-10 px-4 text-xs font-medium text-white bg-black border border-[#2e2e2e] hover:border-[#444444] rounded-md flex items-center justify-center gap-2.5 transition-colors\">\n          <svg class=\"w-4 h-4 fill-current\" viewBox=\"0 0 24 24\"><path fill-rule=\"evenodd\" clip-rule=\"evenodd\" d=\"M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z\"/></svg>\n          GitHub (Empresas Tech)\n        </button>\n      </div>\n\n      <div class=\"relative my-4\">\n        <div class=\"absolute inset-0 flex items-center\"><div class=\"w-full border-t border-[#1f1f1f]\"></div></div>\n        <div class=\"relative flex justify-center text-[10px] uppercase font-mono\"><span class=\"bg-[#0a0a0a] px-2 text-[#666666]\">O correo corporativo</span></div>\n      </div>\n\n      <!-- Detector de Correo Corporativo -->\n      <div class=\"space-y-3\">\n        <div>\n          <label class=\"block text-xs font-medium text-[#888888] mb-1\">Correo Electr\u00f3nico de la Empresa</label>\n          <input \n            type=\"email\" \n            id=\"corp-email-input\" \n            placeholder=\"ejemplo@constructora-andina.com\" \n            oninput=\"validateCorporateDomain(this.value)\"\n            class=\"w-full h-10 px-3 text-xs text-white placeholder-[#555555] bg-black border border-[#2e2e2e] rounded-md focus:border-white focus:outline-none\"\n          >\n          <div id=\"email-validation-feedback\" class=\"mt-1.5 text-[11px] font-mono text-[#888888]\">\n            Validando dominio empresarial...\n          </div>\n        </div>\n\n        <!-- 2FA Authenticator Code Input -->\n        <div class=\"p-3 bg-black border border-[#1f1f1f] rounded-lg\">\n          <div class=\"flex items-center justify-between mb-1.5\">\n            <label class=\"text-xs font-medium text-white flex items-center gap-1.5\">\n              <span>C\u00f3digo 2FA / MFA (6 d\u00edgitos)</span>\n              <span class=\"text-[10px] text-[#0070f3] font-mono\">Google/Microsoft Auth</span>\n            </label>\n            <span class=\"text-[10px] font-mono text-[#00e599]\">Requerido</span>\n          </div>\n          <div class=\"flex gap-2 justify-between\">\n            <input type=\"text\" maxlength=\"1\" value=\"4\" class=\"w-10 h-10 text-center font-mono text-sm bg-[#111111] border border-[#2e2e2e] text-white rounded\">\n            <input type=\"text\" maxlength=\"1\" value=\"8\" class=\"w-10 h-10 text-center font-mono text-sm bg-[#111111] border border-[#2e2e2e] text-white rounded\">\n            <input type=\"text\" maxlength=\"1\" value=\"2\" class=\"w-10 h-10 text-center font-mono text-sm bg-[#111111] border border-[#2e2e2e] text-white rounded\">\n            <input type=\"text\" maxlength=\"1\" value=\"9\" class=\"w-10 h-10 text-center font-mono text-sm bg-[#111111] border border-[#2e2e2e] text-white rounded\">\n            <input type=\"text\" maxlength=\"1\" value=\"1\" class=\"w-10 h-10 text-center font-mono text-sm bg-[#111111] border border-[#2e2e2e] text-white rounded\">\n            <input type=\"text\" maxlength=\"1\" value=\"5\" class=\"w-10 h-10 text-center font-mono text-sm bg-[#111111] border border-[#2e2e2e] text-white rounded\">\n          </div>\n        </div>\n\n        <button onclick=\"closeModal('auth-modal')\" class=\"w-full h-10 text-xs font-semibold text-black bg-white hover:bg-[#eaeaea] rounded-md transition-colors mt-2\">\n          Ingresar al Panel Seguro\n        </button>\n      </div>\n    </div>\n  </div>\n\n  <!-- ========================================================================= -->\n  <!-- MODAL: VISOR DE CL\u00c1USULAS TRAMPA (AUDITOR DE PLIEGOS)                    -->\n  <!-- ========================================================================= -->\n  <div id=\"trap-modal\" class=\"fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4\">\n    <div class=\"geist-card w-full max-w-2xl p-6 rounded-xl border border-[#2e2e2e] shadow-2xl relative max-h-[90vh] overflow-y-auto\">\n      <button onclick=\"closeModal('trap-modal')\" class=\"absolute top-4 right-4 text-[#888888] hover:text-white\">\u2715</button>\n\n      <div class=\"flex items-center gap-2 mb-2\">\n        <span class=\"text-xs font-mono text-[#f5a623] bg-[#f5a623]/10 border border-[#f5a623]/30 px-2 py-0.5 rounded\">\n          AUDITOR\u00cdA AUTOMATIZADA DE PLIEGO CON IA\n        </span>\n      </div>\n      <h3 class=\"text-lg font-bold text-white\">Cl\u00e1usulas Trampa y Restricciones Desproporcionadas</h3>\n      <p class=\"text-xs text-[#888888] mb-4\">Pliego: LP-INVIAS-024-2025 (Transversal del Cusiana)</p>\n\n      <div class=\"space-y-3\">\n        <!-- Trampa 1 -->\n        <div class=\"p-3.5 rounded-lg bg-black border border-[#ee0000]/40\">\n          <div class=\"flex items-center justify-between text-xs font-mono text-[#ee0000] font-semibold\">\n            <span>\ud83d\udea8 CL\u00c1USULA 5.4: EXPERIENCIA DEL PERSONAL CLAVE</span>\n            <span>ALTO RIESGO</span>\n          </div>\n          <p class=\"text-xs text-[#eaeaea] mt-1.5 leading-relaxed\">\n            \"El Especialista en Pavimentos debe acreditar tarjeta profesional emitida con un m\u00ednimo de 15 a\u00f1os y 5 certificaciones exclusivas en v\u00edas primarias de alta monta\u00f1a.\"\n          </p>\n          <div class=\"mt-2 text-[11px] font-mono text-[#888888] bg-[#111111] p-2 rounded border border-[#1f1f1f]\">\n            <strong>DIAGN\u00d3STICO JUR\u00cdDICO:</strong> Vulneraci\u00f3n directa a la Circular Externa N\u00b0 12 de Colombia Compra Eficiente sobre Pliegos Tipo. Esta cl\u00e1usula limita artificialmente la concurrencia. Debe ser objetada en el t\u00e9rmino de observaciones al pliego definitivo.\n          </div>\n        </div>\n\n        <!-- Trampa 2 -->\n        <div class=\"p-3.5 rounded-lg bg-black border border-[#f5a623]/40\">\n          <div class=\"flex items-center justify-between text-xs font-mono text-[#f5a623] font-semibold\">\n            <span>\u26a0\ufe0f CL\u00c1USULA 9.2: VIGENCIA DE LA P\u00d3LIZA DE SERIEDAD</span>\n            <span>RIESGO MEDIO</span>\n          </div>\n          <p class=\"text-xs text-[#eaeaea] mt-1.5 leading-relaxed\">\n            \"La p\u00f3liza de seriedad debe tener una vigencia de 180 d\u00edas calendario contados a partir del cierre, pero no permite pr\u00f3rrogas si se suspende el proceso.\"\n          </p>\n          <div class=\"mt-2 text-[11px] font-mono text-[#888888] bg-[#111111] p-2 rounded border border-[#1f1f1f]\">\n            <strong>DIAGN\u00d3STICO JUR\u00cdDICO:</strong> Riesgo de costo financiero oculto si la entidad decreta suspensiones reiteradas.\n          </div>\n        </div>\n      </div>\n\n      <div class=\"pt-4 mt-4 border-t border-[#1f1f1f] flex justify-end\">\n        <button onclick=\"openModal('clarification-modal'); closeModal('trap-modal');\" class=\"h-9 px-4 text-xs font-medium text-black bg-white rounded-md hover:bg-[#eaeaea]\">\n          Generar Escrito de Objeci\u00f3n Autom\u00e1tico \u2192\n        </button>\n      </div>\n    </div>\n  </div>\n\n  <!-- ========================================================================= -->\n  <!-- MODAL: GENERADOR DE ESCRITO DE OBJECI\u00d3N / HOMOLOGACI\u00d3N                   -->\n  <!-- ========================================================================= -->\n  <div id=\"clarification-modal\" class=\"fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4\">\n    <div class=\"geist-card w-full max-w-2xl p-6 rounded-xl border border-[#2e2e2e] shadow-2xl relative\">\n      <button onclick=\"closeModal('clarification-modal')\" class=\"absolute top-4 right-4 text-[#888888] hover:text-white\">\u2715</button>\n\n      <div class=\"flex items-center gap-2 mb-2\">\n        <span class=\"text-xs font-mono text-[#0070f3] bg-[#0070f3]/10 border border-[#0070f3]/30 px-2 py-0.5 rounded\">\n          BORRADOR FORMAL DE OBSERVACIONES\n        </span>\n      </div>\n      <h3 class=\"text-lg font-bold text-white\">Solicitud de Aclaraci\u00f3n / Objeci\u00f3n al Pliego</h3>\n      <p class=\"text-xs text-[#888888] mb-3\">Redactado autom\u00e1ticamente citando la jurisprudencia de contrataci\u00f3n estatal aplicable.</p>\n\n      <textarea class=\"w-full h-56 p-3 text-xs font-mono text-white bg-black border border-[#2e2e2e] rounded-md focus:border-white focus:outline-none leading-relaxed\" readonly>\nSE\u00d1ORES:\nINSTITUTO NACIONAL DE V\u00cdAS (INVIAS)\nCOMIT\u00c9 ASESOR Y EVALUADOR - LICITACI\u00d3N LP-INVIAS-024-2025\n\nASUNTO: Observaciones al Pliego Definitivo - Solicitud de Supresi\u00f3n de Cl\u00e1usula Restrictiva N\u00b0 5.4 (Personal Clave)\n\nRespetados Se\u00f1ores:\n\nEn ejercicio del principio de libre concurrencia, transparencia y de conformidad con los Pliegos Tipo adoptados por la Agencia Nacional de Contrataci\u00f3n P\u00fablica - Colombia Compra Eficiente (Decreto 342 y concordantes), nos permitimos solicitar formalmente la modificaci\u00f3n de la Cl\u00e1usula 5.4 del pliego definitivo de condiciones.\n\nFUNDAMENTACI\u00d3N JUR\u00cdDICA:\nLa exigencia de 15 a\u00f1os de matr\u00edcula profesional ininterrumpida y 5 contratos en condiciones topogr\u00e1ficas id\u00e9nticas no guarda relaci\u00f3n de proporcionalidad con el objeto a contratar y contradice expresamente la matriz de experiencia del Documento Base de Pliegos Tipo.\n\nPETICI\u00d3N:\nSolicitamos comedidamente ajustar el requisito a los est\u00e1ndares autorizados por Colombia Compra Eficiente, permitiendo que la idoneidad sea demostrada con un m\u00e1ximo de 8 a\u00f1os de ejercicio profesional y contratos de igual naturaleza t\u00e9cnica sin restricciones geogr\u00e1ficas artificiales.\n\nAtentamente,\nREPRESENTANTE LEGAL / APODERADO ESPECIAL\nCONSORCIO DE INGENIER\u00cdA ANDINA\n      </textarea>\n\n      <div class=\"pt-4 flex justify-between items-center\">\n        <span class=\"text-[11px] font-mono text-[#00e599]\">\u2713 Cita art\u00edculos del Decreto 1082 y Pliegos Tipo</span>\n        <button onclick=\"closeModal('clarification-modal'); alert('Escrito copiado al portapapeles listo para radicar en el portal oficial.');\" class=\"h-9 px-4 text-xs font-semibold text-black bg-white rounded-md hover:bg-[#eaeaea]\">\n          Copiar Texto para Radicaci\u00f3n Oficial\n        </button>\n      </div>\n    </div>\n  </div>\n\n  <!-- ========================================================================= -->\n  <!-- MODAL: DILIGENCIADOR ASISTIDO IA                                         -->\n  <!-- ========================================================================= -->\n  <div id=\"ai-filler-modal\" class=\"fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4\">\n    <div class=\"geist-card w-full max-w-lg p-6 rounded-xl border border-[#2e2e2e] shadow-2xl relative\">\n      <button onclick=\"closeModal('ai-filler-modal')\" class=\"absolute top-4 right-4 text-[#888888] hover:text-white\">\u2715</button>\n\n      <div class=\"text-center mb-4\">\n        <div class=\"w-12 h-12 rounded-full bg-[#0070f3]/10 border border-[#0070f3]/30 flex items-center justify-center mx-auto text-[#0070f3] mb-2\">\n          <svg class=\"w-6 h-6\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12\"/></svg>\n        </div>\n        <h3 class=\"text-base font-bold text-white\">Generador Asistido: Pliego a Formatos Oficiales</h3>\n        <p class=\"text-xs text-[#888888]\">Carga el PDF del pliego y la IA completar\u00e1 los anexos requeridos para tu oferta.</p>\n      </div>\n\n      <div class=\"border-2 border-dashed border-[#2e2e2e] hover:border-[#444444] rounded-lg p-6 text-center cursor-pointer bg-black\">\n        <svg class=\"w-8 h-8 text-[#555555] mx-auto mb-2\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z\"/></svg>\n        <span class=\"text-xs text-white font-medium block\">Arrastra aqu\u00ed el Pliego de Condiciones (.PDF)</span>\n        <span class=\"text-[10px] text-[#666666] block mt-1\">Soporta Panam\u00e1Compra, SECOP II y SICOP (hasta 100MB)</span>\n      </div>\n\n      <div class=\"mt-4 p-3 rounded bg-[#111111] border border-[#1f1f1f] text-xs font-mono space-y-1\">\n        <div class=\"text-[#888888]\">Formatos que se generar\u00e1n:</div>\n        <div class=\"text-[#00e599]\">\u2713 Formato 1: Carta de Presentaci\u00f3n de Oferta</div>\n        <div class=\"text-[#00e599]\">\u2713 Formato 2: Conformaci\u00f3n de Proponente Plural</div>\n        <div class=\"text-[#00e599]\">\u2713 Matriz APU con c\u00e1lculo de AIU espec\u00edfico</div>\n      </div>\n\n      <button onclick=\"closeModal('ai-filler-modal'); alert('Procesando pliego con motor IA... Los archivos editables estar\u00e1n listos en 20 segundos.');\" class=\"w-full mt-4 h-10 text-xs font-semibold text-black bg-white hover:bg-[#eaeaea] rounded-md transition-colors\">\n        Comenzar Extracci\u00f3n y Diligenciamiento\n      </button>\n    </div>\n  </div>\n\n  <!-- ========================================================================= -->\n  <!-- MODAL: DESCARGA DE PLANTILLA / CHECKOUT DEMO                              -->\n  <!-- ========================================================================= -->\n  <div id=\"download-modal\" class=\"fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4\">\n    <div class=\"geist-card w-full max-w-md p-6 rounded-xl border border-[#2e2e2e] shadow-2xl relative\">\n      <button onclick=\"closeModal('download-modal')\" class=\"absolute top-4 right-4 text-[#888888] hover:text-white\">\u2715</button>\n\n      <span class=\"text-[10px] font-mono text-[#00e599] bg-[#00e599]/10 border border-[#00e599]/30 px-2 py-0.5 rounded\">\n        DESCARGA DIRECTA EDITABLE\n      </span>\n      <h3 class=\"text-base font-bold text-white mt-2\">Plantilla Oficial Formulada (.xlsx / .docx)</h3>\n      <p class=\"text-xs text-[#888888] mt-1\">Licencia de uso permanente para licitaciones p\u00fablicas de su empresa.</p>\n\n      <div class=\"my-4 p-3 bg-black border border-[#1f1f1f] rounded-lg text-xs font-mono space-y-1.5\">\n        <div class=\"flex justify-between\">\n          <span class=\"text-[#888888]\">Documento:</span>\n          <span class=\"text-white font-medium\">Formato Oficial de Licitaci\u00f3n</span>\n        </div>\n        <div class=\"flex justify-between\">\n          <span class=\"text-[#888888]\">Actualizaciones:</span>\n          <span class=\"text-[#00e599]\">Garantizadas ante reformas</span>\n        </div>\n        <div class=\"flex justify-between\">\n          <span class=\"text-[#888888]\">Formato:</span>\n          <span class=\"text-white\">Excel + Word + Notion Hub</span>\n        </div>\n      </div>\n\n      <div class=\"space-y-2\">\n        <button onclick=\"closeModal('download-modal'); alert('Descarga iniciada: El archivo .zip contiene la plantilla formulada y la gu\u00eda jur\u00eddica de diligenciamiento.');\" class=\"w-full h-10 text-xs font-semibold text-black bg-white hover:bg-[#eaeaea] rounded-md transition-colors\">\n          Confirmar Descarga Directa\n        </button>\n        <button onclick=\"closeModal('download-modal'); switchView('pricing');\" class=\"w-full h-9 text-xs text-[#888888] hover:text-white transition-colors\">\n          O adquiere el Plan Equipos con todo el cat\u00e1logo gratis \u2192\n        </button>\n      </div>\n    </div>\n  </div>\n\n  <!-- ========================================================================= -->\n  <!-- SCRIPTS Y CONTROLADORES DE INTERACCI\u00d3N                                    -->\n  <!-- ========================================================================= -->\n  \n",
+      }}
+    />
   );
 }

@@ -1,23 +1,10 @@
 import type { Metadata } from "next";
-import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
-const fontSans = Inter({
-  subsets: ["latin"],
-  variable: "--font-sans",
-  display: "swap",
-});
-
-const fontMono = JetBrains_Mono({
-  subsets: ["latin"],
-  variable: "--font-mono",
-  display: "swap",
-});
-
 export const metadata: Metadata = {
-  title: "Lici S.A. — Inteligencia de Contratación Pública (PA · CO · CR)",
+  title: "LICITA.LAT // Plataforma de Inteligencia y Documentación de Compras Públicas (PA • CO • CR)",
   description:
-    "Infraestructura de monitoreo en tiempo real, auditoría técnica de pliegos y matrices de cumplimiento para PanamáCompra, SECOP II y SICOP.",
+    "Licitaciones del Estado analizadas, auditadas y ganadas con IA para Panamá (DGCP), Colombia (SECOP II) y Costa Rica (SICOP).",
 };
 
 export default function RootLayout({
@@ -26,11 +13,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html
-      lang="es"
-      className={`${fontSans.variable} ${fontMono.variable} dark bg-black`}
-    >
-      <body className="min-h-screen bg-[#000000] text-[#EDEDED] font-sans antialiased selection:bg-[#EDEDED] selection:text-[#000000]">
+    <html lang="es" className="dark">
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@300;400;500;600&family=Geist:wght@300;400;500;600;700;800&display=swap"
+          rel="stylesheet"
+        />
+      </head>
+      <body className="min-h-screen bg-black text-[#eaeaea] font-sans selection:bg-[#0070f3] selection:text-white pb-24">
         {children}
       </body>
     </html>

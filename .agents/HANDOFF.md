@@ -1,13 +1,19 @@
 # HANDOFF DE RELEVO DE CONTEXTO
-- **Fecha y Hora:** 2026-10-19 00:45:30
-- **Objetivo General:** Despliegue continuo en Vercel vía GitHub: Actualización del repositorio remoto con el nuevo frontend Geist Design System, la ruta /tienda y la API headless.
+- **Fecha y Hora:** 2026-10-19 02:22:00
+- **Objetivo General:** Despliegue en Vercel y depuración de archivos innecesarios de la Versión Web 1.1 (LICITA.LAT).
 - **Cuenta Saliente:** Cuenta 8 (Desarrollo Full-Stack & Failover — Gemini Flash High)
-- **Último Cambio Exacto:** Sincronización y commit de todo el rediseño Geist en `src/app/page.tsx`, `src/app/layout.tsx`, `src/app/tienda/page.tsx`, `tailwind.config.ts`, `web/app.py`, eliminación de templates Jinja obsoletos y ajuste en `.gitignore`. Build de Next.js verificado exitosamente.
-- **Siguiente Acción Inmediata:** Monitorear el build automático en el panel de Vercel y verificar visualmente las rutas `/` y `/tienda`.
+- **Último Cambio Exacto:**
+  - Eliminados archivos redundantes `index.html` (raíz), `public/index.html` y directorio vacío `scripts/`.
+  - Eliminado `src/app/tienda/page.tsx` por unificación total en `src/app/page.tsx` (7 vistas con `switchView`).
+  - Configurado redirect permanente en `next.config.mjs` de `/tienda` hacia `/#templates`.
+  - Añadido soporte de hash navigation (`/#templates`, `/#pricing`, etc.) y `hashchange` en `src/app/page.tsx`.
+  - `src/app/globals.css`, `src/app/layout.tsx` y `tailwind.config.ts` consolidados con Geist Design System.
+  - Verificado `npm run build` en producción con código 0 y 0 errores.
+- **Siguiente Acción Inmediata:** Despliegue automático en Vercel vía GitHub y validación de la URL pública.
 - **Archivos Clave en Contexto:**
-  - `src/app/layout.tsx`
   - `src/app/page.tsx`
-  - `src/app/tienda/page.tsx`
+  - `src/app/layout.tsx`
+  - `src/app/globals.css`
+  - `next.config.mjs`
   - `tailwind.config.ts`
-  - `web/app.py`
-  - `.gitignore`
+  - `.agents/HANDOFF.md`

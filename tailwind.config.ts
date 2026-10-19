@@ -1,38 +1,72 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
+  darkMode: "class",
   content: [
     "./src/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
+    "./public/**/*.html",
+    "./*.html",
   ],
   theme: {
     extend: {
       colors: {
-        background: "#000000",
-        foreground: "#EDEDED",
-        surface: {
-          50: "#0A0A0A",
-          100: "#111111",
-          200: "#1A1A1A",
-          border: "#262626",
-          hover: "#1F1F1F",
+        geist: {
+          black: "#000000",
+          white: "#ffffff",
+          gray: {
+            100: "#0a0a0a",
+            200: "#111111",
+            300: "#1f1f1f",
+            400: "#2e2e2e",
+            500: "#444444",
+            600: "#666666",
+            700: "#888888",
+            800: "#a1a1a1",
+            900: "#eaeaea",
+          },
+          border: {
+            subtle: "#1f1f1f",
+            default: "#2e2e2e",
+            hover: "#444444",
+            strong: "#666666",
+          },
+          accent: {
+            blue: "#0070f3",
+            "blue-hover": "#005bb5",
+          },
+          status: {
+            success: "#00e599",
+            warning: "#f5a623",
+            error: "#ee0000",
+          },
         },
-        accent: {
-          blue: "#0070F3",
-          cyan: "#50E3C2",
-          emerald: "#00E599",
-          amber: "#F5A623",
-          rose: "#FF0080",
-        }
       },
       fontFamily: {
-        sans: ['var(--font-sans)', 'Inter', 'system-ui', '-apple-system', 'sans-serif'],
-        mono: ['var(--font-mono)', '"JetBrains Mono"', 'monospace'],
+        sans: [
+          "Geist Sans",
+          "var(--font-sans)",
+          "-apple-system",
+          "BlinkMacSystemFont",
+          "Segoe UI",
+          "sans-serif",
+        ],
+        mono: [
+          "Geist Mono",
+          "var(--font-mono)",
+          "SFMono-Regular",
+          "Menlo",
+          "Monaco",
+          "Consolas",
+          "monospace",
+        ],
       },
-      borderRadius: {
-        vercel: "6px",
-      }
+      letterSpacing: {
+        tighter: "-0.04em",
+        tight: "-0.02em",
+        snug: "-0.01em",
+      },
     },
   },
   plugins: [],

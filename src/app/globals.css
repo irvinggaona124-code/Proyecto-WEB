@@ -2,50 +2,44 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: #000000;
-  --foreground: #EDEDED;
-}
-
+/* Estilos base Geist */
 body {
-  color: var(--foreground);
-  background: var(--background);
+  background-color: #000000;
+  color: #eaeaea;
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
-  letter-spacing: -0.018em;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Bordes finos de 1px estilo Geist Vercel */
-.vercel-card {
-  background: #0A0A0A;
-  border: 1px solid #262626;
-  border-radius: 8px;
-  transition: border-color 150ms ease, background 150ms ease;
+/* Scrollbar minimalista */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
 }
-.vercel-card:hover {
-  border-color: #404040;
+::-webkit-scrollbar-track {
+  background: #000000;
 }
-
-.vercel-btn-primary {
-  background: #FFFFFF;
-  color: #000000;
-  font-weight: 500;
-  border-radius: 6px;
-  transition: all 150ms ease;
+::-webkit-scrollbar-thumb {
+  background: #222222;
+  border-radius: 3px;
 }
-.vercel-btn-primary:hover {
-  background: #E5E5E5;
+::-webkit-scrollbar-thumb:hover {
+  background: #333333;
 }
 
-.vercel-btn-secondary {
-  background: #0A0A0A;
-  color: #A1A1A1;
-  border: 1px solid #262626;
-  font-weight: 500;
-  border-radius: 6px;
-  transition: all 150ms ease;
+/* Transición universal Geist */
+.geist-card {
+  background-color: #0a0a0a;
+  border: 1px solid #1f1f1f;
+  transition: background-color 150ms cubic-bezier(0.16, 1, 0.3, 1), border-color 150ms cubic-bezier(0.16, 1, 0.3, 1);
 }
-.vercel-btn-secondary:hover {
-  background: #171717;
-  color: #FFFFFF;
-  border-color: #404040;
+.geist-card:hover {
+  background-color: #111111;
+  border-color: #333333;
+}
+
+.view-content {
+  display: none;
+}
+.view-content.active {
+  display: block;
 }
