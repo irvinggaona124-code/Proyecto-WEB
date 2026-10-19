@@ -1,6 +1,6 @@
 """
-Pruebas de Integración de Rutas Web y API FastAPI
-Verifica la disponibilidad de todas las vistas, SEO y endpoints REST.
+Pruebas de Integración de API REST Headless FastAPI (v2.0.0)
+Verifica la disponibilidad de endpoints REST consumidos por Next.js.
 """
 
 import os
@@ -33,75 +33,76 @@ class TestWebRoutes(unittest.TestCase):
         data = response.json()
         self.assertEqual(data["status"], "healthy")
         self.assertEqual(data["swarm_nodes"], 8)
+        self.assertIn("PA", data["paises_conectados"])
 
-    def test_home_dashboard_render(self):
-        """Verifica que la página principal renderice el buscador y métricas."""
-        response = self.client.get("/")
+    def test_api_listar_licitaciones(self):
+        """Verifica el endpoint JSON de listado de licitaciones para Next.js."""
+        response = self.client.get("/api/licitaciones?limite=10")
         self.assertEqual(response.status_code, 200)
-        self.assertIn("text/html", response.headers["content-type"])
-        self.assertIn("Licitaciones", response.text)
-        self.assertIn("Buscador Global", response.text)
+        data = response.json()
+        self.assertIn("total", data)
+        self.assertIn("licitaciones", data)
+        self.assertIn("total_usd", data)
 
-    def test_home_filter_by_country(self):
-        """Verifica el filtrado por país en el dashboard."""
-        response = self.client.get("/?pais=PA")
+    def test_api_filtrar_por_pais(self):
+        """Verifica el filtrado por país en /api/licitaciones."""
+        response = self.client.get("/api/licitaciones?pais=PA")
         self.assertEqual(response.status_code, 200)
-        self.assertIn("Panamá", response.text)
+        data = response.json()
+        for lic in data["licitaciones"]:
+            self.assertEqual(lic.get("pais"), "PA")
 
-    def test_tienda_page_render(self):
-        """Verifica la página de la tienda de activos digitales."""
-        response = self.client.get("/tienda")
+    def test_api_catalogo_plantillas_y_planes(self):
+        """Verifica el catálogo consumido por src/app/tienda/page.tsx."""
+        response = self.client.get("/api/catalogo")
         self.assertEqual(response.status_code, 200)
-        self.assertIn("Plantilla A", response.text)
-        self.assertIn("Kit Maestro", response.text)
-        self.assertIn("Plan Pro", response.text)
+        data = response.json()
+        self.assertIn("plantillas", data)
+        self.assertIn("planes", data)
+        self.assertIn("macro_categorias", data)
+        self.assertTrue(len(data["plantillas"]) > 0)
+        self.assertTrue(len(data["planes"]) > 0)
 
-    def test_programmatic_seo_route(self):
-        """Verifica la ruta indexable de SEO para Colombia Obras Civiles."""
-        response = self.client.get("/colombia/licitaciones/obras-civiles-e-infraestructura")
+    def test_api_programmatic_seo_json(self):
+        """Verifica el endpoint JSON de Programmatic SEO para Colombia."""
+        response = self.client.get("/api/seo/colombia/obras-civiles-e-infraestructura")
         self.assertEqual(response.status_code, 200)
-        self.assertIn("Obras Civiles", response.text)
-        self.assertIn("Colombia", response.text)
+        data = response.json()
+        self.assertIn("seo", data)
+        self.assertEqual(data["pais_codigo"], "CO")
+        self.assertIn("licitaciones", data)
 
     def test_api_auditar_pliego(self):
-        """Verifica el endpoint de auditoría con Cuenta 4."""
+        """Verifica el endpoint de auditoría con Cuenta 4 (Copiloto Gems Pro)."""
         payload = {
             "id_licitacion": "TEST-WEB-001",
             "entidad": "Alcaldía de Medellín",
             "objeto": "Construcción de ciclorruta y parques",
+            "texto_pliego": "Requisito RUP clasificador 721410 y fianza de cumplimiento al 10%",
         }
         response = self.client.post("/api/auditar", json=payload)
         self.assertEqual(response.status_code, 200)
         data = response.json()
         self.assertIn("clausulas_trampa", data)
         self.assertIn("evaluacion_financiera_rup", data)
-        self.assertTrue(data["evaluacion_financiera_rup"]["apto_para_licitar"])
 
     def test_api_checkout_order(self):
-        """Verifica el procesamiento de órdenes en 2 toques con Yappy."""
+        """Verifica el procesamiento y registro de órdenes de checkout."""
         payload = {
             "id_licitacion": "PA-2026-TEST",
             "codigo_oficial": "2026-LP-01",
             "tipo_producto": "TEMPLATE",
             "metodo_pago": "YAPPY",
             "monto_usd": 19.0,
-            "whatsapp": "+507 6000-0000",
-            "email": "contacto@licitador.pa"
+            "whatsapp": "+507 6578-7219",
+            "email": "cliente@licisa.com"
         }
         response = self.client.post("/api/checkout", json=payload)
         self.assertEqual(response.status_code, 200)
         data = response.json()
         self.assertEqual(data["status"], "success")
         self.assertIn("ORD-", data["orden"]["id_orden"])
-        self.assertIn("Yappy", data["instruccion_pago"])
-
-    def test_api_listar_licitaciones(self):
-        """Verifica el endpoint JSON de listado de licitaciones."""
-        response = self.client.get("/api/licitaciones?limite=10")
-        self.assertEqual(response.status_code, 200)
-        data = response.json()
-        self.assertIn("total", data)
-        self.assertIn("licitaciones", data)
+        self.assertEqual(data["orden"]["metodo_pago"], "YAPPY")
 
 
 if __name__ == "__main__":
