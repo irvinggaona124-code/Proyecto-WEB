@@ -41,3 +41,5 @@ Thumbs.db
 Lici S.A/
 .agents/.trigger_swap
 .trigger_swap
+.cursor/
+.agents/mcp_config.json

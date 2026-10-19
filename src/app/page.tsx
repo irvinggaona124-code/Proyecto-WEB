@@ -1,168 +1,779 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useState, useEffect } from "react";
 
-export default function LicitacionesPage() {
+export default function AuralisHomePage() {
+  const [activeTab, setActiveTab] = useState<"studio" | "agents" | "api">("studio");
+  const [isPlaying, setIsPlaying] = useState<boolean>(true);
+  const [activeCategory, setActiveCategory] = useState<string>("AI Voice Generator");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
+
+  // Dynamic audio spectral visualizer heights
+  const [spectrumHeights, setSpectrumHeights] = useState<number[]>([
+    25, 40, 65, 55, 85, 95, 70, 45, 60, 30, 50, 20, 35, 15,
+  ]);
+
   useEffect(() => {
-    // Definir funciones en window para que los atributos inline onclick/oninput funcionen
-    (window as any).switchView = function(viewName: string) {
-      document.querySelectorAll(".view-content").forEach((view) => {
-        view.classList.remove("active");
-      });
-      document.querySelectorAll(".nav-tab").forEach((tab) => {
-        tab.className =
-          "nav-tab px-3 py-1.5 rounded-md font-medium text-[#888888] hover:text-white transition-colors";
-      });
-      const targetView = document.getElementById(`view-${viewName}`);
-      if (targetView) {
-        targetView.classList.add("active");
-      }
-      const activeTab = document.getElementById(`tab-${viewName}`);
-      if (activeTab) {
-        activeTab.className =
-          "nav-tab px-3 py-1.5 rounded-md font-medium text-white bg-[#1a1a1a] border border-[#333333] transition-colors";
-      }
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    };
+    if (!isPlaying) return;
+    const interval = setInterval(() => {
+      setSpectrumHeights((prev) =>
+        prev.map((h) => {
+          const delta = (Math.random() - 0.5) * 30;
+          return Math.min(100, Math.max(15, Math.round(h + delta)));
+        })
+      );
+    }, 200);
+    return () => clearInterval(interval);
+  }, [isPlaying]);
 
-    (window as any).filterTemplates = function(country: string) {
-      document.querySelectorAll(".tmpl-pill").forEach((btn) => {
-        btn.className =
-          "tmpl-pill px-3 py-1.5 text-xs font-mono rounded-md text-[#888888] hover:text-white";
-      });
-      const activeBtn = document.getElementById(`btn-tmpl-${country.toLowerCase()}`);
-      if (activeBtn) {
-        activeBtn.className =
-          "tmpl-pill px-3 py-1.5 text-xs font-mono rounded-md bg-[#1a1a1a] text-white font-medium";
-      }
-      const items = document.querySelectorAll(".template-item");
-      items.forEach((item: any) => {
-        if (country === "ALL") {
-          item.style.display = "flex";
-        } else if (item.classList.contains(`tmpl-${country.toLowerCase()}`)) {
-          item.style.display = "flex";
-        } else {
-          item.style.display = "none";
-        }
-      });
-    };
-
-    (window as any).goToStep = function(stepNumber: number) {
-      document.querySelectorAll(".wizard-step").forEach((step) => {
-        step.classList.add("hidden");
-      });
-      const currentStep = document.getElementById(`wizard-step-${stepNumber}`);
-      if (currentStep) {
-        currentStep.classList.remove("hidden");
-      }
-      const bar = document.getElementById("step-progress-bar");
-      const label = document.getElementById("step-title-label");
-      const perc = document.getElementById("step-percentage");
-      const percentages = [25, 50, 75, 100];
-      const titles = [
-        "PASO 1 DE 4: DATOS LEGALES DE LA EMPRESA",
-        "PASO 2 DE 4: SELECCIÓN DE MACRO-CATEGORÍAS",
-        "PASO 3 DE 4: ACREDITACIÓN LEGAL ACTIVA (RUP/DGCP/SICOP)",
-        "PASO 4 DE 4: INVITACIÓN Y EQUIPO DE LICITACIONES",
-      ];
-      if (bar) bar.style.width = percentages[stepNumber - 1] + "%";
-      if (perc) perc.textContent = percentages[stepNumber - 1] + "% COMPLETADO";
-      if (label) label.textContent = titles[stepNumber - 1];
-    };
-
-    (window as any).updateTaxIdLabel = function() {
-      const select = document.getElementById("country-select-step") as HTMLSelectElement;
-      const label = document.getElementById("tax-id-label");
-      if (!select || !label) return;
-      const country = select.value;
-      if (country === "PA") {
-        label.textContent = "RUC y Dígito Verificador (Panamá)";
-      } else if (country === "CO") {
-        label.textContent = "NIT y Dígito de Verificación (Colombia)";
-      } else if (country === "CR") {
-        label.textContent = "Cédula Jurídica de 10 Dígitos (Costa Rica)";
-      }
-    };
-
-    (window as any).validateCorporateDomain = function(email: string) {
-      const feedback = document.getElementById("email-validation-feedback");
-      if (!feedback) return;
-      const genericDomains = [
-        "gmail.com",
-        "hotmail.com",
-        "yahoo.com",
-        "outlook.com",
-        "live.com",
-      ];
-      if (!email.includes("@")) {
-        feedback.textContent = "Ingrese un correo completo.";
-        feedback.className = "mt-1.5 text-[11px] font-mono text-[#888888]";
-        return;
-      }
-      const domain = email.split("@")[1].toLowerCase();
-      if (genericDomains.includes(domain)) {
-        feedback.textContent =
-          "⚠️ Se detectó correo genérico (@" +
-          domain +
-          "). Ingrese un correo con dominio propio de su empresa.";
-        feedback.className = "mt-1.5 text-[11px] font-mono text-[#f5a623]";
-      } else if (domain.includes(".")) {
-        feedback.textContent = "✓ Dominio corporativo verificado (@" + domain + ").";
-        feedback.className = "mt-1.5 text-[11px] font-mono text-[#00e599]";
-      }
-    };
-
-    (window as any).openModal = function(modalId: string) {
-      const modal = document.getElementById(modalId);
-      if (modal) modal.classList.remove("hidden");
-    };
-
-    (window as any).closeModal = function(modalId: string) {
-      const modal = document.getElementById(modalId);
-      if (modal) modal.classList.add("hidden");
-    };
-
-    const checkHashView = () => {
-      const hash = window.location.hash.replace("#", "");
-      if (
-        hash &&
-        [
-          "explorer",
-          "ai-diagnostic",
-          "templates",
-          "kanban",
-          "notifications",
-          "pricing",
-          "onboarding",
-        ].includes(hash)
-      ) {
-        (window as any).switchView(hash);
-      }
-    };
-    checkHashView();
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
-        e.preventDefault();
-        (window as any).switchView("explorer");
-        const input = document.getElementById("searchInput");
-        if (input) input.focus();
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("hashchange", checkHashView);
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("hashchange", checkHashView);
-    };
-  }, []);
+  const marqueeLogos = [
+    { icon: "bolt", name: "Velocity" },
+    { icon: "deployed_code", name: "Nexus" },
+    { icon: "auto_awesome", name: "Lumina" },
+    { icon: "layers", name: "Stack" },
+    { icon: "token", name: "Quanta" },
+    { icon: "hub", name: "Orbital" },
+    { icon: "data_exploration", name: "Scalar" },
+  ];
 
   return (
-    <div
-      dangerouslySetInnerHTML={{
-        __html: "\n\n  <!-- ========================================================================= -->\n  <!-- 0. TICKER DE TELEMETR\u00cdA EN VIVO (GLOBAL HEADER TICKER)                   -->\n  <!-- ========================================================================= -->\n  <div class=\"w-full bg-[#0a0a0a] border-b border-[#1f1f1f] text-xs font-mono py-1.5 px-4 overflow-x-auto whitespace-nowrap\">\n    <div class=\"max-w-[1440px] mx-auto flex items-center justify-between gap-6 text-[#888888]\">\n      <div class=\"flex items-center gap-6\">\n        <div class=\"flex items-center gap-2\">\n          <span class=\"inline-block w-2 h-2 rounded-full bg-[#00e599] animate-pulse\"></span>\n          <span class=\"text-white font-medium\">SISTEMA ACTIVO</span>\n          <span class=\"text-[#444444]\">|</span>\n          <span>PIPELINE TOTAL: <span class=\"text-white font-semibold\">$184,920,400 USD</span></span>\n        </div>\n        <div class=\"hidden lg:flex items-center gap-4\">\n          <span class=\"text-[#666666]\">\ud83c\uddf5\ud83c\udde6 DGCP (Panam\u00e1Compra): 42 licitaciones indexadas hoy ($18.4M)</span>\n          <span class=\"text-[#444444]\">\u2022</span>\n          <span class=\"text-[#666666]\">\ud83c\udde8\ud83c\uddf4 SECOP II: 114 pliegos tipo actualizados ($64.2M)</span>\n          <span class=\"text-[#444444]\">\u2022</span>\n          <span class=\"text-[#666666]\">\ud83c\udde8\ud83c\uddf7 SICOP (Ley 9986): 28 aperturas en 48h (\u20a14,280M CRC)</span>\n        </div>\n      </div>\n      <div class=\"flex items-center gap-3\">\n        <span class=\"text-xs bg-[#f5a623]/10 text-[#f5a623] border border-[#f5a623]/30 px-2 py-0.5 rounded-full font-mono\">\n          \u26a1 14 Adendas Cr\u00edticas Detectadas\n        </span>\n      </div>\n    </div>\n  </div>\n\n  <!-- ========================================================================= -->\n  <!-- BARRA DE NAVEGACI\u00d3N PRINCIPAL (GEIST SHELL)                             -->\n  <!-- ========================================================================= -->\n  <header class=\"sticky top-0 z-50 w-full bg-black/85 backdrop-blur-md border-b border-[#1f1f1f]\">\n    <div class=\"max-w-[1440px] mx-auto px-4 sm:px-6 h-14 flex items-center justify-between\">\n      \n      <!-- Marca & Selector de Secci\u00f3n -->\n      <div class=\"flex items-center gap-6\">\n        <a href=\"#\" class=\"flex items-center gap-2 text-white font-semibold tracking-tight text-sm hover:opacity-90\">\n          <svg height=\"20\" viewBox=\"0 0 115 100\" fill=\"currentColor\">\n            <path d=\"M57.5 0L115 100H0L57.5 0z\" />\n          </svg>\n          <span class=\"tracking-tighter font-mono text-base\">LICITA<span class=\"text-[#888888]\">.LAT</span></span>\n        </a>\n\n        <!-- Navegaci\u00f3n de Vistas Principales -->\n        <nav class=\"hidden md:flex items-center gap-1 text-xs\">\n          <button onclick=\"switchView('explorer')\" id=\"tab-explorer\" class=\"nav-tab px-3 py-1.5 rounded-md font-medium text-white bg-[#1a1a1a] border border-[#333333] transition-colors\">\n            Explorador P\u00fablico\n          </button>\n          <button onclick=\"switchView('ai-diagnostic')\" id=\"tab-ai-diagnostic\" class=\"nav-tab px-3 py-1.5 rounded-md font-medium text-[#888888] hover:text-white transition-colors\">\n            Diagn\u00f3stico IA\n          </button>\n          <button onclick=\"switchView('templates')\" id=\"tab-templates\" class=\"nav-tab px-3 py-1.5 rounded-md font-medium text-[#888888] hover:text-white transition-colors\">\n            Plantillas Oficiales\n          </button>\n          <button onclick=\"switchView('kanban')\" id=\"tab-kanban\" class=\"nav-tab px-3 py-1.5 rounded-md font-medium text-[#888888] hover:text-white transition-colors\">\n            Kanban & Auditor\u00eda\n          </button>\n          <button onclick=\"switchView('notifications')\" id=\"tab-notifications\" class=\"nav-tab px-3 py-1.5 rounded-md font-medium text-[#888888] hover:text-white transition-colors\">\n            Notificaciones\n          </button>\n          <button onclick=\"switchView('pricing')\" id=\"tab-pricing\" class=\"nav-tab px-3 py-1.5 rounded-md font-medium text-[#888888] hover:text-white transition-colors\">\n            Planes & Facturaci\u00f3n\n          </button>\n        </nav>\n      </div>\n\n      <!-- Accesos R\u00e1pidos & Auth -->\n      <div class=\"flex items-center gap-2.5\">\n        <button onclick=\"switchView('onboarding')\" class=\"hidden sm:inline-flex items-center text-xs font-mono text-[#888888] hover:text-white border border-[#2e2e2e] hover:border-[#444444] px-2.5 py-1 rounded bg-[#0a0a0a]\">\n          Onboarding Demo (4 Pasos)\n        </button>\n        <button onclick=\"openModal('auth-modal')\" class=\"inline-flex items-center justify-center h-8 px-3 text-xs font-medium text-black bg-white rounded-md hover:bg-[#eaeaea] transition-colors\">\n          Acceso Empresa / SSO\n        </button>\n      </div>\n    </div>\n  </header>\n\n  <!-- ========================================================================= -->\n  <!-- SECCI\u00d3N 3: LANDING PAGE Y EXPLORADOR P\u00daBLICO                             -->\n  <!-- ========================================================================= -->\n  <main id=\"view-explorer\" class=\"view-content active max-w-[1440px] mx-auto px-4 sm:px-6 pt-8\">\n    <!-- Hero / Headline Ingenieril -->\n    <div class=\"max-w-3xl mb-8\">\n      <div class=\"inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-mono bg-[#0070f3]/10 text-[#0070f3] border border-[#0070f3]/30 mb-4\">\n        <span>\u25cf Motor Inteligente Multi-Jurisdicci\u00f3n</span>\n        <span class=\"text-[#888888]\">v3.4.1</span>\n      </div>\n      <h1 class=\"text-3xl sm:text-4xl md:text-5xl font-bold tracking-tighter text-white leading-tight\">\n        Licitaciones del Estado analizadas, auditadas y ganadas con IA.\n      </h1>\n      <p class=\"mt-3 text-[#888888] text-sm sm:text-base leading-relaxed\">\n        Explora pliegos, audita requisitos t\u00e9cnicos y financieros en segundos, detecta cl\u00e1usulas desproporcionadas y descarga formatos oficiales autocompletados para Panam\u00e1 (DGCP), Colombia (SECOP II) y Costa Rica (SICOP).\n      </p>\n    </div>\n\n    <!-- Barra de B\u00fasqueda Universal y Filtros de Pa\u00eds -->\n    <div class=\"geist-card p-4 rounded-xl mb-8 space-y-4\">\n      <div class=\"grid grid-cols-1 md:grid-cols-12 gap-3\">\n        <!-- Input de b\u00fasqueda -->\n        <div class=\"md:col-span-6 relative\">\n          <input \n            type=\"text\" \n            id=\"searchInput\" \n            placeholder=\"Buscar por objeto, entidad compradora, c\u00f3digo UNSPSC o n\u00famero de pliego...\"\n            class=\"w-full h-11 px-4 pl-10 text-xs sm:text-sm text-white placeholder-[#555555] bg-black border border-[#2e2e2e] rounded-md focus:outline-none focus:border-white focus:ring-1 focus:ring-white transition-colors\"\n          />\n          <div class=\"absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-[#555555]\">\n            <svg class=\"w-4 h-4\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z\"/></svg>\n          </div>\n          <div class=\"absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none\">\n            <kbd class=\"px-1.5 py-0.5 text-[10px] font-mono text-[#666666] bg-[#141414] border border-[#2e2e2e] rounded\">\u2318K</kbd>\n          </div>\n        </div>\n\n        <!-- Filtro Pa\u00eds -->\n        <div class=\"md:col-span-3\">\n          <select class=\"w-full h-11 px-3 text-xs sm:text-sm text-white bg-black border border-[#2e2e2e] rounded-md focus:outline-none focus:border-white transition-colors\">\n            <option value=\"ALL\">Todos los pa\u00edses (PA \u2022 CO \u2022 CR)</option>\n            <option value=\"PA\">\ud83c\uddf5\ud83c\udde6 Panam\u00e1 (Panam\u00e1Compra / ACP)</option>\n            <option value=\"CO\">\ud83c\udde8\ud83c\uddf4 Colombia (SECOP II Pliegos Tipo)</option>\n            <option value=\"CR\">\ud83c\udde8\ud83c\uddf7 Costa Rica (SICOP Ley 9986)</option>\n          </select>\n        </div>\n\n        <!-- Macro-Categor\u00edas -->\n        <div class=\"md:col-span-3\">\n          <select class=\"w-full h-11 px-3 text-xs sm:text-sm text-white bg-black border border-[#2e2e2e] rounded-md focus:outline-none focus:border-white transition-colors\">\n            <option value=\"ALL\">Todas las Categor\u00edas (10 Macro-rubros)</option>\n            <option value=\"OBRAS\">Obras Civiles e Infraestructura</option>\n            <option value=\"TECH\">Tecnolog\u00eda, Cloud & Telecom</option>\n            <option value=\"SALUD\">Salud, F\u00e1rmacos e Insumos</option>\n            <option value=\"MANT\">Mantenimiento y Facility</option>\n            <option value=\"CONSULT\">Consultor\u00eda e Interventor\u00eda</option>\n          </select>\n        </div>\n      </div>\n\n      <!-- Filtros R\u00e1pidos (Pills) -->\n      <div class=\"flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-[#1f1f1f] text-xs\">\n        <div class=\"flex flex-wrap items-center gap-2\">\n          <span class=\"text-[#666666] font-mono\">Filtros r\u00e1pidos:</span>\n          <button class=\"px-2.5 py-1 rounded bg-[#111111] hover:bg-[#1a1a1a] text-white border border-[#2e2e2e] text-[11px] font-mono\">Presupuesto > $1M USD</button>\n          <button class=\"px-2.5 py-1 rounded bg-[#111111] hover:bg-[#1a1a1a] text-white border border-[#2e2e2e] text-[11px] font-mono\">Cierre < 5 d\u00edas</button>\n          <button class=\"px-2.5 py-1 rounded bg-[#111111] hover:bg-[#1a1a1a] text-[#00e599] border border-[#00e599]/30 text-[11px] font-mono\">Con Pliegos Tipo</button>\n          <button class=\"px-2.5 py-1 rounded bg-[#111111] hover:bg-[#1a1a1a] text-[#f5a623] border border-[#f5a623]/30 text-[11px] font-mono\">Con Adendas Recientes</button>\n        </div>\n        <div class=\"text-[#888888] font-mono\">\n          Mostrando <span class=\"text-white font-semibold\">1,489</span> procesos activos\n        </div>\n      </div>\n    </div>\n\n    <!-- Grid de Tarjetas de Licitaci\u00f3n en Tiempo Real -->\n    <div class=\"space-y-4\">\n      \n      <!-- CARD 1: PANAM\u00c1 -->\n      <div class=\"geist-card p-5 rounded-lg border border-[#1f1f1f]\">\n        <div class=\"flex flex-col lg:flex-row lg:items-start justify-between gap-4\">\n          <!-- Meta Principal -->\n          <div class=\"space-y-2 flex-1\">\n            <div class=\"flex flex-wrap items-center gap-2\">\n              <span class=\"px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-[#0070f3]/15 text-[#0070f3] border border-[#0070f3]/30\">\n                \ud83c\uddf5\ud83c\udde6 PANAM\u00c1 \u2022 DGCP\n              </span>\n              <span class=\"font-mono text-xs text-[#888888]\">Pliego: 2025-0-03-0-08-LV-049821</span>\n              <span class=\"text-[#444444]\">\u2022</span>\n              <span class=\"font-mono text-xs text-[#888888]\">Metro de Panam\u00e1 S.A.</span>\n              <span class=\"inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono bg-[#f5a623]/10 text-[#f5a623] border border-[#f5a623]/30\">\n                \u26a1 Adenda N\u00b0 2 Publicada\n              </span>\n            </div>\n\n            <h3 class=\"text-lg font-semibold tracking-tight text-white hover:text-[#0070f3] cursor-pointer transition-colors\">\n              Mantenimiento Mayor, Adecuaci\u00f3n Integral y Suministro de Repuestos Cr\u00edticos para el Sistema de Tracci\u00f3n El\u00e9ctrica de la L\u00ednea 1\n            </h3>\n\n            <!-- Resumen IA -->\n            <p class=\"text-xs text-[#a1a1a1] leading-relaxed max-w-4xl bg-black/60 p-2.5 rounded border border-[#1f1f1f]\">\n              <strong class=\"text-white font-mono text-[11px]\">S\u00cdNTESIS IA:</strong> Contrato marco a 36 meses. Exige experiencia demostrada de 2 contratos de similar cuant\u00eda en sistemas ferroviarios metro y fianza de propuesta del 10% seg\u00fan Texto \u00danico Ley 22 de 2006. Riesgo detectado en Cl\u00e1usula 9.3: Plazo perentorio de entrega de garant\u00edas de 48 horas tras notificaci\u00f3n.\n            </p>\n\n            <div class=\"flex flex-wrap items-center gap-4 pt-1 font-mono text-xs text-[#888888]\">\n              <div>UNSPSC: <span class=\"text-[#eaeaea]\">72101500 (Mantenimiento de v\u00edas f\u00e9rreas)</span></div>\n              <div class=\"text-[#444444]\">\u2022</div>\n              <div>Visita previa: <span class=\"text-[#eaeaea]\">Obligatoria (28 Feb 2025)</span></div>\n            </div>\n          </div>\n\n          <!-- M\u00e9tricas y Acci\u00f3n -->\n          <div class=\"flex lg:flex-col items-end justify-between lg:justify-start gap-3 min-w-[260px] border-t lg:border-t-0 pt-3 lg:pt-0 border-[#1f1f1f]\">\n            <div class=\"text-right\">\n              <div class=\"text-xs font-mono text-[#888888]\">Presupuesto Oficial</div>\n              <div class=\"text-xl font-bold font-mono tracking-tight text-white\">$12,850,000 <span class=\"text-xs font-normal text-[#888888]\">USD</span></div>\n              <div class=\"text-[11px] font-mono text-[#00e599]\">B/ 12,850,000 Balboas</div>\n            </div>\n\n            <div class=\"text-right\">\n              <div class=\"text-xs font-mono text-[#888888]\">Cierre de Ofertas</div>\n              <div class=\"inline-flex items-center gap-1.5 font-mono text-xs text-[#f5a623] font-semibold bg-[#f5a623]/10 px-2 py-0.5 rounded\">\n                <svg class=\"w-3.5 h-3.5\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z\"/></svg>\n                <span>3d : 14h : 22m</span>\n              </div>\n            </div>\n\n            <!-- Botones -->\n            <div class=\"flex items-center gap-2 w-full mt-1\">\n              <button onclick=\"switchView('ai-diagnostic')\" class=\"flex-1 h-8 px-3 text-xs font-medium text-black bg-white rounded-md hover:bg-[#eaeaea] transition-colors inline-flex items-center justify-center gap-1.5\">\n                <span>Auditar Pliego IA</span>\n                <span class=\"text-[10px] font-mono bg-black text-white px-1 rounded\">82%</span>\n              </button>\n              <button onclick=\"switchView('templates')\" class=\"h-8 px-2.5 text-xs font-medium text-white border border-[#2e2e2e] hover:bg-[#161616] rounded-md transition-colors\" title=\"Descargar Plantillas Oficiales\">\n                Plantillas\n              </button>\n            </div>\n          </div>\n        </div>\n      </div>\n\n      <!-- CARD 2: COLOMBIA -->\n      <div class=\"geist-card p-5 rounded-lg border border-[#1f1f1f]\">\n        <div class=\"flex flex-col lg:flex-row lg:items-start justify-between gap-4\">\n          <!-- Meta Principal -->\n          <div class=\"space-y-2 flex-1\">\n            <div class=\"flex flex-wrap items-center gap-2\">\n              <span class=\"px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-[#00e599]/15 text-[#00e599] border border-[#00e599]/30\">\n                \ud83c\udde8\ud83c\uddf4 COLOMBIA \u2022 SECOP II\n              </span>\n              <span class=\"font-mono text-xs text-[#888888]\">Proceso: LP-INVIAS-024-2025</span>\n              <span class=\"text-[#444444]\">\u2022</span>\n              <span class=\"font-mono text-xs text-[#888888]\">Instituto Nacional de V\u00edas (INVIAS)</span>\n              <span class=\"inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono bg-[#0070f3]/10 text-[#0070f3] border border-[#0070f3]/30\">\n                \u2713 Pliego Tipo CCE Obligatorio\n              </span>\n            </div>\n\n            <h3 class=\"text-lg font-semibold tracking-tight text-white hover:text-[#0070f3] cursor-pointer transition-colors\">\n              Construcci\u00f3n, Pavimentaci\u00f3n y Estabilizaci\u00f3n de Taludes en el Corredor Vial Transversal del Cusiana (Ruta Nacional 62)\n            </h3>\n\n            <!-- Resumen IA -->\n            <p class=\"text-xs text-[#a1a1a1] leading-relaxed max-w-4xl bg-black/60 p-2.5 rounded border border-[#1f1f1f]\">\n              <strong class=\"text-white font-mono text-[11px]\">S\u00cdNTESIS IA:</strong> Licitaci\u00f3n de Obra P\u00fablica con Pliegos Tipo. \u00cdndices RUP m\u00ednimos obligatorios: Liquidez \u2265 2.5, Endeudamiento \u2264 65%, Raz\u00f3n Cobertura Intereses \u2265 3.0. Formatos 1, 2, 3, 4 y 5 obligatorios sin alteraciones. Incluye puntaje adicional de 0.5 puntos por inclusi\u00f3n laboral de mujeres.\n            </p>\n\n            <div class=\"flex flex-wrap items-center gap-4 pt-1 font-mono text-xs text-[#888888]\">\n              <div>UNSPSC: <span class=\"text-[#eaeaea]\">72141000 (Construcci\u00f3n de autopistas y carreteras)</span></div>\n              <div class=\"text-[#444444]\">\u2022</div>\n              <div>Acreditaci\u00f3n: <span class=\"text-[#eaeaea]\">RUP Vigente y en Firme</span></div>\n            </div>\n          </div>\n\n          <!-- M\u00e9tricas y Acci\u00f3n -->\n          <div class=\"flex lg:flex-col items-end justify-between lg:justify-start gap-3 min-w-[260px] border-t lg:border-t-0 pt-3 lg:pt-0 border-[#1f1f1f]\">\n            <div class=\"text-right\">\n              <div class=\"text-xs font-mono text-[#888888]\">Presupuesto Oficial</div>\n              <div class=\"text-xl font-bold font-mono tracking-tight text-white\">$11,450,000 <span class=\"text-xs font-normal text-[#888888]\">USD</span></div>\n              <div class=\"text-[11px] font-mono text-[#888888]\">$ 46,200,000,000 COP</div>\n            </div>\n\n            <div class=\"text-right\">\n              <div class=\"text-xs font-mono text-[#888888]\">Cierre de Ofertas</div>\n              <div class=\"inline-flex items-center gap-1.5 font-mono text-xs text-[#ee0000] font-semibold bg-[#ee0000]/10 px-2 py-0.5 rounded\">\n                <svg class=\"w-3.5 h-3.5\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z\"/></svg>\n                <span>18h : 05m : 11s</span>\n              </div>\n            </div>\n\n            <!-- Botones -->\n            <div class=\"flex items-center gap-2 w-full mt-1\">\n              <button onclick=\"switchView('ai-diagnostic')\" class=\"flex-1 h-8 px-3 text-xs font-medium text-black bg-white rounded-md hover:bg-[#eaeaea] transition-colors inline-flex items-center justify-center gap-1.5\">\n                <span>Auditar Pliego IA</span>\n                <span class=\"text-[10px] font-mono bg-black text-white px-1 rounded\">68%</span>\n              </button>\n              <button onclick=\"switchView('templates')\" class=\"h-8 px-2.5 text-xs font-medium text-white border border-[#2e2e2e] hover:bg-[#161616] rounded-md transition-colors\">\n                Formatos CCE\n              </button>\n            </div>\n          </div>\n        </div>\n      </div>\n\n      <!-- CARD 3: COSTA RICA -->\n      <div class=\"geist-card p-5 rounded-lg border border-[#1f1f1f]\">\n        <div class=\"flex flex-col lg:flex-row lg:items-start justify-between gap-4\">\n          <!-- Meta Principal -->\n          <div class=\"space-y-2 flex-1\">\n            <div class=\"flex flex-wrap items-center gap-2\">\n              <span class=\"px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-[#7928ca]/20 text-[#a855f7] border border-[#7928ca]/40\">\n                \ud83c\udde8\ud83c\uddf7 COSTA RICA \u2022 SICOP\n              </span>\n              <span class=\"font-mono text-xs text-[#888888]\">Cartel: 2025LN-000018-0001101142</span>\n              <span class=\"text-[#444444]\">\u2022</span>\n              <span class=\"font-mono text-xs text-[#888888]\">Caja Costarricense de Seguro Social (CCSS)</span>\n              <span class=\"inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono bg-[#00e599]/10 text-[#00e599] border border-[#00e599]/30\">\n                Ley General N\u00b0 9986\n              </span>\n            </div>\n\n            <h3 class=\"text-lg font-semibold tracking-tight text-white hover:text-[#0070f3] cursor-pointer transition-colors\">\n              Suministro, Despliegue y Mantenimiento de Infraestructura Hiperconvergente y Almacenamiento Centralizado para el EDUS\n            </h3>\n\n            <!-- Resumen IA -->\n            <p class=\"text-xs text-[#a1a1a1] leading-relaxed max-w-4xl bg-black/60 p-2.5 rounded border border-[#1f1f1f]\">\n              <strong class=\"text-white font-mono text-[11px]\">S\u00cdNTESIS IA:</strong> Licitaci\u00f3n Mayor bajo Ley N\u00b0 9986. Requiere firma digital BCCR activa para la subida de oferta en SICOP. Desglose detallado de estructura de costos con desglose de utilidad bruta y f\u00f3rmulas de reajuste de precios del Decreto Ejecutivo. Se detect\u00f3 cl\u00e1usula limitativa sobre certificaciones de fabricante con validez m\u00ednima de 60 d\u00edas.\n            </p>\n\n            <div class=\"flex flex-wrap items-center gap-4 pt-1 font-mono text-xs text-[#888888]\">\n              <div>UNSPSC: <span class=\"text-[#eaeaea]\">43211500 (Servidores de datos)</span></div>\n              <div class=\"text-[#444444]\">\u2022</div>\n              <div>R\u00e9gimen Prohibiciones: <span class=\"text-[#eaeaea]\">Declaraci\u00f3n Art. 23 Obligatoria</span></div>\n            </div>\n          </div>\n\n          <!-- M\u00e9tricas y Acci\u00f3n -->\n          <div class=\"flex lg:flex-col items-end justify-between lg:justify-start gap-3 min-w-[260px] border-t lg:border-t-0 pt-3 lg:pt-0 border-[#1f1f1f]\">\n            <div class=\"text-right\">\n              <div class=\"text-xs font-mono text-[#888888]\">Presupuesto Oficial</div>\n              <div class=\"text-xl font-bold font-mono tracking-tight text-white\">$5,620,000 <span class=\"text-xs font-normal text-[#888888]\">USD</span></div>\n              <div class=\"text-[11px] font-mono text-[#888888]\">\u20a1 2,866,200,000 CRC</div>\n            </div>\n\n            <div class=\"text-right\">\n              <div class=\"text-xs font-mono text-[#888888]\">Cierre de Ofertas</div>\n              <div class=\"inline-flex items-center gap-1.5 font-mono text-xs text-white font-semibold bg-[#222222] px-2 py-0.5 rounded\">\n                <svg class=\"w-3.5 h-3.5\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z\"/></svg>\n                <span>7d : 09h : 44m</span>\n              </div>\n            </div>\n\n            <!-- Botones -->\n            <div class=\"flex items-center gap-2 w-full mt-1\">\n              <button onclick=\"switchView('ai-diagnostic')\" class=\"flex-1 h-8 px-3 text-xs font-medium text-black bg-white rounded-md hover:bg-[#eaeaea] transition-colors inline-flex items-center justify-center gap-1.5\">\n                <span>Auditar Pliego IA</span>\n                <span class=\"text-[10px] font-mono bg-black text-white px-1 rounded\">94%</span>\n              </button>\n              <button onclick=\"switchView('templates')\" class=\"h-8 px-2.5 text-xs font-medium text-white border border-[#2e2e2e] hover:bg-[#161616] rounded-md transition-colors\">\n                SICOP Docs\n              </button>\n            </div>\n          </div>\n        </div>\n      </div>\n\n    </div>\n  </main>\n\n  <!-- ========================================================================= -->\n  <!-- SECCI\u00d3N 4: MOTOR DE DIAGN\u00d3STICO IA (\"C\u00d3MO GANAR LA LICITACI\u00d3N\")         -->\n  <!-- ========================================================================= -->\n  <main id=\"view-ai-diagnostic\" class=\"view-content max-w-[1440px] mx-auto px-4 sm:px-6 pt-8\">\n    <div class=\"flex items-center justify-between pb-6 border-b border-[#1f1f1f]\">\n      <div>\n        <div class=\"flex items-center gap-2\">\n          <span class=\"text-xs font-mono text-[#0070f3] bg-[#0070f3]/10 px-2 py-0.5 rounded border border-[#0070f3]/30\">DIAGN\u00d3STICO PREDICTIVO IA</span>\n          <span class=\"text-xs font-mono text-[#888888]\">Pliego Ref: LP-INVIAS-024-2025</span>\n        </div>\n        <h2 class=\"text-2xl font-bold tracking-tight text-white mt-1\">Evaluaci\u00f3n de Probabilidad de Ganar (Win Rate Score)</h2>\n        <p class=\"text-xs text-[#888888]\">Cruce automatizado entre las exigencias del pliego licitatorio y el perfil corporativo legal, financiero y t\u00e9cnico de su empresa.</p>\n      </div>\n      <div class=\"flex items-center gap-3\">\n        <button onclick=\"openModal('clarification-modal')\" class=\"h-9 px-3.5 text-xs font-medium text-white bg-black border border-[#2e2e2e] hover:border-[#444444] rounded-md transition-colors inline-flex items-center gap-2\">\n          <svg class=\"w-3.5 h-3.5 text-[#0070f3]\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z\"/></svg>\n          Redactar Objeci\u00f3n / Aclaraci\u00f3n\n        </button>\n        <button onclick=\"openModal('consorcio-modal')\" class=\"h-9 px-3.5 text-xs font-medium text-black bg-white hover:bg-[#eaeaea] rounded-md transition-colors inline-flex items-center gap-1.5 font-semibold\">\n          Estructurar Consorcio \u00d3ptimo\n        </button>\n      </div>\n    </div>\n\n    <!-- Win-Rate Meter & 3 Factores Clave -->\n    <div class=\"grid grid-cols-1 lg:grid-cols-12 gap-6 mt-6\">\n      \n      <!-- SCORE PRINCIPAL (4 COLS) -->\n      <div class=\"lg:col-span-4 geist-card p-6 rounded-xl flex flex-col justify-between\">\n        <div>\n          <div class=\"text-xs font-mono text-[#888888] uppercase tracking-wider\">Score Global de Adjudicaci\u00f3n</div>\n          <div class=\"mt-4 flex items-baseline gap-2\">\n            <span class=\"text-6xl font-extrabold font-mono tracking-tighter text-white\">82</span>\n            <span class=\"text-2xl font-mono text-[#888888]\">/100</span>\n          </div>\n          <div class=\"inline-flex items-center gap-1.5 mt-2 px-2.5 py-1 rounded-full text-xs font-mono bg-[#00e599]/10 text-[#00e599] border border-[#00e599]/30\">\n            <span class=\"w-2 h-2 rounded-full bg-[#00e599]\"></span>\n            Probabilidad Alta: Perfil Altamente Competitivo\n          </div>\n          <p class=\"text-xs text-[#888888] mt-4 leading-relaxed\">\n            Su firma cumple con los requisitos habilitantes y tiene ventaja t\u00e9cnica en experiencia acumulada. Sin embargo, se identific\u00f3 un d\u00e9ficit de capital de trabajo que exige soluci\u00f3n consorcial o apalancamiento financiero.\n          </p>\n        </div>\n\n        <div class=\"pt-6 border-t border-[#1f1f1f] space-y-2\">\n          <div class=\"flex justify-between text-xs font-mono\">\n            <span class=\"text-[#888888]\">Simulaci\u00f3n de Competidores:</span>\n            <span class=\"text-white\">4 oferentes probables</span>\n          </div>\n          <div class=\"flex justify-between text-xs font-mono\">\n            <span class=\"text-[#888888]\">Sensibilidad al Precio (A.I.U):</span>\n            <span class=\"text-[#f5a623]\">Alta (Factor 0.6)</span>\n          </div>\n        </div>\n      </div>\n\n      <!-- DESGLOSE EN LOS 3 FACTORES CLAVE (8 COLS) -->\n      <div class=\"lg:col-span-8 space-y-4\">\n        \n        <!-- Factor 1: Experiencia y Capacidad T\u00e9cnica -->\n        <div class=\"geist-card p-4 rounded-lg\">\n          <div class=\"flex items-center justify-between\">\n            <div class=\"flex items-center gap-3\">\n              <div class=\"w-8 h-8 rounded bg-[#111111] border border-[#2e2e2e] flex items-center justify-center font-mono text-sm text-white\">\n                01\n              </div>\n              <div>\n                <h4 class=\"text-sm font-semibold text-white\">Capacidad T\u00e9cnica y Experiencia Acreditada</h4>\n                <p class=\"text-xs text-[#888888]\">Contratos ejecutados RUP/DGCP con c\u00f3digos UNSPSC id\u00e9nticos</p>\n              </div>\n            </div>\n            <div class=\"text-right font-mono\">\n              <span class=\"text-sm font-bold text-[#00e599]\">92%</span>\n              <span class=\"text-xs text-[#666666]\"> (Aprobado)</span>\n            </div>\n          </div>\n          <div class=\"w-full bg-[#161616] h-1.5 rounded-full mt-3 overflow-hidden\">\n            <div class=\"bg-[#00e599] h-full\" style=\"width: 92%\"></div>\n          </div>\n          <div class=\"mt-2.5 text-xs font-mono text-[#888888] flex justify-between\">\n            <span>Requerido: 3 contratos \u2265 10,000 SMMLV</span>\n            <span class=\"text-white\">Acreditado: 4 contratos (Total: 14,200 SMMLV)</span>\n          </div>\n        </div>\n\n        <!-- Factor 2: Capacidad Financiera (Alerta) -->\n        <div class=\"geist-card p-4 rounded-lg border-l-2 border-l-[#f5a623]\">\n          <div class=\"flex items-center justify-between\">\n            <div class=\"flex items-center gap-3\">\n              <div class=\"w-8 h-8 rounded bg-[#111111] border border-[#2e2e2e] flex items-center justify-center font-mono text-sm text-[#f5a623]\">\n                02\n              </div>\n              <div>\n                <h4 class=\"text-sm font-semibold text-white\">Capacidad Financiera y Liquidez</h4>\n                <p class=\"text-xs text-[#888888]\">Indicadores de solvencia, liquidez y endeudamiento exigidos en pliego</p>\n              </div>\n            </div>\n            <div class=\"text-right font-mono\">\n              <span class=\"text-sm font-bold text-[#f5a623]\">64%</span>\n              <span class=\"text-xs text-[#f5a623]\"> (Brecha Detectada)</span>\n            </div>\n          </div>\n          <div class=\"w-full bg-[#161616] h-1.5 rounded-full mt-3 overflow-hidden\">\n            <div class=\"bg-[#f5a623] h-full\" style=\"width: 64%\"></div>\n          </div>\n          <div class=\"mt-2.5 text-xs font-mono flex flex-wrap justify-between text-[#888888] gap-2\">\n            <span>\u00cdndice Liquidez Pliego: <strong class=\"text-white\">\u2265 2.5</strong> | Su Empresa: <span class=\"text-[#00e599]\">2.8 \u2713</span></span>\n            <span>Endeudamiento Pliego: <strong class=\"text-white\">\u2264 65%</strong> | Su Empresa: <span class=\"text-[#ee0000]\">69.4% \u2715</span></span>\n          </div>\n        </div>\n\n        <!-- Factor 3: Habilitaci\u00f3n Legal y Normativa -->\n        <div class=\"geist-card p-4 rounded-lg\">\n          <div class=\"flex items-center justify-between\">\n            <div class=\"flex items-center gap-3\">\n              <div class=\"w-8 h-8 rounded bg-[#111111] border border-[#2e2e2e] flex items-center justify-center font-mono text-sm text-white\">\n                03\n              </div>\n              <div>\n                <h4 class=\"text-sm font-semibold text-white\">Habilitaci\u00f3n Jur\u00eddica y Certificaciones</h4>\n                <p class=\"text-xs text-[#888888]\">Inhabilidades, beneficiario final, paz y salvos tributarios, ISO</p>\n              </div>\n            </div>\n            <div class=\"text-right font-mono\">\n              <span class=\"text-sm font-bold text-[#00e599]\">98%</span>\n              <span class=\"text-xs text-[#666666]\"> (Pleno)</span>\n            </div>\n          </div>\n          <div class=\"w-full bg-[#161616] h-1.5 rounded-full mt-3 overflow-hidden\">\n            <div class=\"bg-[#00e599] h-full\" style=\"width: 98%\"></div>\n          </div>\n          <div class=\"mt-2.5 text-xs font-mono text-[#888888] flex justify-between\">\n            <span>Paz y Salvo Tributario: Vigente</span>\n            <span class=\"text-white\">ISO 9001 / ISO 45001: Validadas en archivo</span>\n          </div>\n        </div>\n\n      </div>\n    </div>\n\n    <!-- Panel de Brechas Cr\u00edticas y Soluci\u00f3n Consorcial -->\n    <div class=\"grid grid-cols-1 md:grid-cols-2 gap-6 mt-6\">\n      <!-- Brechas y Riesgos -->\n      <div class=\"geist-card p-5 rounded-xl border border-[#ee0000]/30 bg-[#ee0000]/5\">\n        <div class=\"flex items-center gap-2 text-[#ee0000] font-mono text-xs font-semibold\">\n          <svg class=\"w-4 h-4\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z\"/></svg>\n          BRECHAS CR\u00cdTICAS DE DESCALIFICACI\u00d3N INMEDIATA (ALERTAS)\n        </div>\n        <ul class=\"mt-3 space-y-2 text-xs text-[#eaeaea]\">\n          <li class=\"flex items-start gap-2\">\n            <span class=\"text-[#ee0000] font-mono font-bold\">\u2022</span>\n            <span><strong>Endeudamiento Excedido:</strong> El pliego no permite subsanar el \u00edndice del 65% de endeudamiento posterior al cierre. Si se presenta individualmente, la propuesta ser\u00e1 rechazada.</span>\n          </li>\n          <li class=\"flex items-start gap-2\">\n            <span class=\"text-[#f5a623] font-mono font-bold\">\u2022</span>\n            <span><strong>Cl\u00e1usula Restrictiva 5.4:</strong> Exige un especialista en geotecnia con tarjeta profesional expedida hace m\u00e1s de 12 a\u00f1os, lo cual vulnera la circular de Colombia Compra Eficiente.</span>\n          </li>\n        </ul>\n      </div>\n\n      <!-- Estrategia Recomendada por IA -->\n      <div class=\"geist-card p-5 rounded-xl border border-[#0070f3]/30 bg-[#0070f3]/5\">\n        <div class=\"flex items-center gap-2 text-[#0070f3] font-mono text-xs font-semibold\">\n          <svg class=\"w-4 h-4\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M13 10V3L4 14h7v7l9-11h-7z\"/></svg>\n          ESTRATEGIA RECOMENDADA POR IA PARA GANAR\n        </div>\n        <div class=\"mt-3 text-xs text-[#eaeaea] space-y-2 leading-relaxed\">\n          <p>\n            1. <strong>Uni\u00f3n Temporal / Consorcio 60%-40%:</strong> Vincular a una firma aliada con endeudamiento &lt; 40% y liquidez &gt; 3.0 para promediar los estados financieros y superar con holgura el Formato 4 del RUP.\n          </p>\n          <p>\n            2. <strong>Objeci\u00f3n al Pliego:</strong> Radicar de inmediato solicitud de aclaraci\u00f3n sobre la Cl\u00e1usula 5.4 mediante nuestro generador legal para que la entidad elimine la exigencia restrictiva de antig\u00fcedad.\n          </p>\n        </div>\n      </div>\n    </div>\n  </main>\n\n  <!-- ========================================================================= -->\n  <!-- SECCI\u00d3N 5: REPOSITORIO DE PLANTILLAS Y DOCUMENTOS OFICIALES              -->\n  <!-- ========================================================================= -->\n  <main id=\"view-templates\" class=\"view-content max-w-[1440px] mx-auto px-4 sm:px-6 pt-8\">\n    <div class=\"flex flex-col md:flex-row md:items-center justify-between pb-6 border-b border-[#1f1f1f] gap-4\">\n      <div>\n        <div class=\"inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-mono bg-[#111111] text-[#888888] border border-[#2e2e2e]\">\n          CENTRO OFICIAL DE RECURSOS JUR\u00cdDICOS Y FINANCIEROS\n        </div>\n        <h2 class=\"text-2xl font-bold tracking-tight text-white mt-1\">Plantillas Legales y Matrices de Licitaci\u00f3n</h2>\n        <p class=\"text-xs text-[#888888]\">Documentos formulados en .xlsx, minutas en .docx y workspaces de Notion adaptados estrictamente a la legislaci\u00f3n vigente.</p>\n      </div>\n\n      <!-- Selector de Jurisdicci\u00f3n -->\n      <div class=\"inline-flex p-1 bg-[#0a0a0a] border border-[#1f1f1f] rounded-lg\">\n        <button onclick=\"filterTemplates('PA')\" id=\"btn-tmpl-pa\" class=\"tmpl-pill px-3 py-1.5 text-xs font-mono rounded-md bg-[#1a1a1a] text-white font-medium\">\ud83c\uddf5\ud83c\udde6 Panam\u00e1 (Ley 22)</button>\n        <button onclick=\"filterTemplates('CO')\" id=\"btn-tmpl-co\" class=\"tmpl-pill px-3 py-1.5 text-xs font-mono rounded-md text-[#888888] hover:text-white\">\ud83c\udde8\ud83c\uddf4 Colombia (Pliegos Tipo)</button>\n        <button onclick=\"filterTemplates('CR')\" id=\"btn-tmpl-cr\" class=\"tmpl-pill px-3 py-1.5 text-xs font-mono rounded-md text-[#888888] hover:text-white\">\ud83c\udde8\ud83c\uddf7 Costa Rica (Ley 9986)</button>\n      </div>\n    </div>\n\n    <!-- Banner Generador Asistido con IA -->\n    <div class=\"mt-6 p-4 rounded-xl geist-card border border-[#0070f3]/40 bg-gradient-to-r from-black via-[#0070f3]/10 to-black flex flex-col sm:flex-row sm:items-center justify-between gap-4\">\n      <div class=\"flex items-center gap-3\">\n        <div class=\"w-10 h-10 rounded-lg bg-[#0070f3]/20 border border-[#0070f3]/30 flex items-center justify-center text-[#0070f3]\">\n          <svg class=\"w-5 h-5\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z\"/></svg>\n        </div>\n        <div>\n          <h4 class=\"text-sm font-semibold text-white\">Generador Asistido de Anexos con IA (Incluido en Suscripci\u00f3n)</h4>\n          <p class=\"text-xs text-[#888888]\">Carga el PDF del pliego de condiciones y nuestra IA pre-llenar\u00e1 todas las matrices y cartas con la informaci\u00f3n legal de tu empresa.</p>\n        </div>\n      </div>\n      <button onclick=\"openModal('ai-filler-modal')\" class=\"h-9 px-4 text-xs font-medium text-black bg-white hover:bg-[#eaeaea] rounded-md transition-colors whitespace-nowrap font-mono font-semibold\">\n        Subir Pliego y Diligenciar Auto \u2197\n      </button>\n    </div>\n\n    <!-- Cat\u00e1logo de Documentos (Filtrable) -->\n    <div class=\"grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6\" id=\"templates-grid\">\n      \n      <!-- ITEM PA 1 -->\n      <div class=\"template-item tmpl-pa geist-card p-4 rounded-lg flex flex-col justify-between\">\n        <div>\n          <div class=\"flex items-center justify-between text-xs font-mono text-[#888888] mb-2\">\n            <span class=\"text-[#0070f3]\">PANAM\u00c1 \u2022 DGCP</span>\n            <span>.XLSX CON F\u00d3RMULAS</span>\n          </div>\n          <h4 class=\"text-sm font-semibold text-white\">Formulario Oficial de Desglose de Precios y Costos Unitarios</h4>\n          <p class=\"text-xs text-[#888888] mt-1.5 leading-relaxed\">\n            Estructura estandarizada seg\u00fan Texto \u00danico de la Ley 22 de 2006. Incluye hojas formuladas para mano de obra (MITRADEL), materiales e ITBMS discriminado.\n          </p>\n        </div>\n        <div class=\"pt-4 mt-4 border-t border-[#1f1f1f] flex items-center justify-between\">\n          <span class=\"text-xs font-mono font-semibold text-white\">$24.00 USD</span>\n          <button onclick=\"openModal('download-modal')\" class=\"px-3 py-1.5 text-xs font-medium bg-[#161616] hover:bg-white hover:text-black border border-[#2e2e2e] rounded transition-all\">\n            Descargar Plantilla\n          </button>\n        </div>\n      </div>\n\n      <!-- ITEM PA 2 -->\n      <div class=\"template-item tmpl-pa geist-card p-4 rounded-lg flex flex-col justify-between\">\n        <div>\n          <div class=\"flex items-center justify-between text-xs font-mono text-[#888888] mb-2\">\n            <span class=\"text-[#0070f3]\">PANAM\u00c1 \u2022 DGCP</span>\n            <span>.DOCX FORMAL</span>\n          </div>\n          <h4 class=\"text-sm font-semibold text-white\">Declaraci\u00f3n Jurada de Acciones Nominativas y Beneficiario Final</h4>\n          <p class=\"text-xs text-[#888888] mt-1.5 leading-relaxed\">\n            Formato obligatorio conforme a Ley 23 y requerimientos de Panam\u00e1Compra. Incluye cl\u00e1usulas de certificaci\u00f3n notarial y no incapacidad legal para contratar.\n          </p>\n        </div>\n        <div class=\"pt-4 mt-4 border-t border-[#1f1f1f] flex items-center justify-between\">\n          <span class=\"text-xs font-mono font-semibold text-white\">$19.00 USD</span>\n          <button onclick=\"openModal('download-modal')\" class=\"px-3 py-1.5 text-xs font-medium bg-[#161616] hover:bg-white hover:text-black border border-[#2e2e2e] rounded transition-all\">\n            Descargar Plantilla\n          </button>\n        </div>\n      </div>\n\n      <!-- ITEM PA 3 -->\n      <div class=\"template-item tmpl-pa geist-card p-4 rounded-lg flex flex-col justify-between\">\n        <div>\n          <div class=\"flex items-center justify-between text-xs font-mono text-[#888888] mb-2\">\n            <span class=\"text-[#0070f3]\">PANAM\u00c1 \u2022 LEY 22</span>\n            <span>.DOCX + NOTION</span>\n          </div>\n          <h4 class=\"text-sm font-semibold text-white\">Minuta de Acuerdo de Consorcio para Licitaciones P\u00fablicas</h4>\n          <p class=\"text-xs text-[#888888] mt-1.5 leading-relaxed\">\n            Contrato privado de conformaci\u00f3n accidental con designaci\u00f3n de apoderado \u00fanico, porcentaje de participaci\u00f3n y delimitaci\u00f3n de responsabilidad solidaria.\n          </p>\n        </div>\n        <div class=\"pt-4 mt-4 border-t border-[#1f1f1f] flex items-center justify-between\">\n          <span class=\"text-xs font-mono font-semibold text-white\">$39.00 USD</span>\n          <button onclick=\"openModal('download-modal')\" class=\"px-3 py-1.5 text-xs font-medium bg-[#161616] hover:bg-white hover:text-black border border-[#2e2e2e] rounded transition-all\">\n            Descargar Plantilla\n          </button>\n        </div>\n      </div>\n\n      <!-- ITEM CO 1 -->\n      <div class=\"template-item tmpl-co geist-card p-4 rounded-lg flex flex-col justify-between\">\n        <div>\n          <div class=\"flex items-center justify-between text-xs font-mono text-[#888888] mb-2\">\n            <span class=\"text-[#00e599]\">COLOMBIA \u2022 SECOP II</span>\n            <span>FORMATO TIPO CCE</span>\n          </div>\n          <h4 class=\"text-sm font-semibold text-white\">Formato 2: Conformaci\u00f3n de Proponente Plural (Consorcio / UT)</h4>\n          <p class=\"text-xs text-[#888888] mt-1.5 leading-relaxed\">\n            Plantilla oficial estricta de Colombia Compra Eficiente. Configuraci\u00f3n exacta de obligaciones, facultades del representante y porcentajes de ejecuci\u00f3n.\n          </p>\n        </div>\n        <div class=\"pt-4 mt-4 border-t border-[#1f1f1f] flex items-center justify-between\">\n          <span class=\"text-xs font-mono font-semibold text-white\">$22.00 USD</span>\n          <button onclick=\"openModal('download-modal')\" class=\"px-3 py-1.5 text-xs font-medium bg-[#161616] hover:bg-white hover:text-black border border-[#2e2e2e] rounded transition-all\">\n            Descargar Plantilla\n          </button>\n        </div>\n      </div>\n\n      <!-- ITEM CO 2 -->\n      <div class=\"template-item tmpl-co geist-card p-4 rounded-lg flex flex-col justify-between\">\n        <div>\n          <div class=\"flex items-center justify-between text-xs font-mono text-[#888888] mb-2\">\n            <span class=\"text-[#00e599]\">COLOMBIA \u2022 RUP & FINANZAS</span>\n            <span>.XLSX FORMULADO</span>\n          </div>\n          <h4 class=\"text-sm font-semibold text-white\">Formato 4: Capacidad Financiera, Organizacional y Cobertura</h4>\n          <p class=\"text-xs text-[#888888] mt-1.5 leading-relaxed\">\n            Hoja de c\u00e1lculo con validaci\u00f3n autom\u00e1tica de f\u00f3rmulas de liquidez, nivel de endeudamiento y raz\u00f3n de cobertura de intereses seg\u00fan certificaci\u00f3n RUP.\n          </p>\n        </div>\n        <div class=\"pt-4 mt-4 border-t border-[#1f1f1f] flex items-center justify-between\">\n          <span class=\"text-xs font-mono font-semibold text-white\">$29.00 USD</span>\n          <button onclick=\"openModal('download-modal')\" class=\"px-3 py-1.5 text-xs font-medium bg-[#161616] hover:bg-white hover:text-black border border-[#2e2e2e] rounded transition-all\">\n            Descargar Plantilla\n          </button>\n        </div>\n      </div>\n\n      <!-- ITEM CO 3 -->\n      <div class=\"template-item tmpl-co geist-card p-4 rounded-lg flex flex-col justify-between\">\n        <div>\n          <div class=\"flex items-center justify-between text-xs font-mono text-[#888888] mb-2\">\n            <span class=\"text-[#00e599]\">COLOMBIA \u2022 INGENIER\u00cdA</span>\n            <span>.XLSX AVANZADO</span>\n          </div>\n          <h4 class=\"text-sm font-semibold text-white\">An\u00e1lisis de Precios Unitarios (APU) con Desglose de A.I.U.</h4>\n          <p class=\"text-xs text-[#888888] mt-1.5 leading-relaxed\">\n            Matriz completa de costos directos, cuadrillas de trabajo, rendimientos de maquinaria y c\u00e1lculo autom\u00e1tico de Administraci\u00f3n, Imprevistos y Utilidad.\n          </p>\n        </div>\n        <div class=\"pt-4 mt-4 border-t border-[#1f1f1f] flex items-center justify-between\">\n          <span class=\"text-xs font-mono font-semibold text-white\">$34.00 USD</span>\n          <button onclick=\"openModal('download-modal')\" class=\"px-3 py-1.5 text-xs font-medium bg-[#161616] hover:bg-white hover:text-black border border-[#2e2e2e] rounded transition-all\">\n            Descargar Plantilla\n          </button>\n        </div>\n      </div>\n\n      <!-- ITEM CR 1 -->\n      <div class=\"template-item tmpl-cr geist-card p-4 rounded-lg flex flex-col justify-between\">\n        <div>\n          <div class=\"flex items-center justify-between text-xs font-mono text-[#888888] mb-2\">\n            <span class=\"text-[#a855f7]\">COSTA RICA \u2022 SICOP</span>\n            <span>.DOCX REVISADO</span>\n          </div>\n          <h4 class=\"text-sm font-semibold text-white\">Declaraci\u00f3n de No Afectaci\u00f3n por R\u00e9gimen de Prohibiciones</h4>\n          <p class=\"text-xs text-[#888888] mt-1.5 leading-relaxed\">\n            Cumplimiento riguroso del Art\u00edculo 23 de la Ley General de Contrataci\u00f3n P\u00fablica N\u00b0 9986. Requisito de admisibilidad excluyente en el sistema SICOP.\n          </p>\n        </div>\n        <div class=\"pt-4 mt-4 border-t border-[#1f1f1f] flex items-center justify-between\">\n          <span class=\"text-xs font-mono font-semibold text-white\">$19.00 USD</span>\n          <button onclick=\"openModal('download-modal')\" class=\"px-3 py-1.5 text-xs font-medium bg-[#161616] hover:bg-white hover:text-black border border-[#2e2e2e] rounded transition-all\">\n            Descargar Plantilla\n          </button>\n        </div>\n      </div>\n\n      <!-- ITEM CR 2 -->\n      <div class=\"template-item tmpl-cr geist-card p-4 rounded-lg flex flex-col justify-between\">\n        <div>\n          <div class=\"flex items-center justify-between text-xs font-mono text-[#888888] mb-2\">\n            <span class=\"text-[#a855f7]\">COSTA RICA \u2022 SICOP</span>\n            <span>.XLSX CON DECRETO</span>\n          </div>\n          <h4 class=\"text-sm font-semibold text-white\">Hoja de Estructura de Precios y F\u00f3rmulas de Reajuste</h4>\n          <p class=\"text-xs text-[#888888] mt-1.5 leading-relaxed\">\n            Desglose de costos directos e indirectos con f\u00f3rmulas oficiales de reajuste por variaciones en \u00edndices de precios al consumidor o mano de obra del INEC.\n          </p>\n        </div>\n        <div class=\"pt-4 mt-4 border-t border-[#1f1f1f] flex items-center justify-between\">\n          <span class=\"text-xs font-mono font-semibold text-white\">$27.00 USD</span>\n          <button onclick=\"openModal('download-modal')\" class=\"px-3 py-1.5 text-xs font-medium bg-[#161616] hover:bg-white hover:text-black border border-[#2e2e2e] rounded transition-all\">\n            Descargar Plantilla\n          </button>\n        </div>\n      </div>\n\n      <!-- ITEM CR 3 -->\n      <div class=\"template-item tmpl-cr geist-card p-4 rounded-lg flex flex-col justify-between\">\n        <div>\n          <div class=\"flex items-center justify-between text-xs font-mono text-[#888888] mb-2\">\n            <span class=\"text-[#a855f7]\">COSTA RICA \u2022 SICOP</span>\n            <span>.DOCX CERTIFICADO</span>\n          </div>\n          <h4 class=\"text-sm font-semibold text-white\">Modelo de Acuerdo Consorcial para Contrataci\u00f3n en SICOP</h4>\n          <p class=\"text-xs text-[#888888] mt-1.5 leading-relaxed\">\n            Minuta legal de consorcio conforme al reglamento a la Ley N\u00b0 9986. Estructura de apoderamiento especial para firma digital unificada ante la administraci\u00f3n.\n          </p>\n        </div>\n        <div class=\"pt-4 mt-4 border-t border-[#1f1f1f] flex items-center justify-between\">\n          <span class=\"text-xs font-mono font-semibold text-white\">$39.00 USD</span>\n          <button onclick=\"openModal('download-modal')\" class=\"px-3 py-1.5 text-xs font-medium bg-[#161616] hover:bg-white hover:text-black border border-[#2e2e2e] rounded transition-all\">\n            Descargar Plantilla\n          </button>\n        </div>\n      </div>\n\n    </div>\n\n    <!-- Opci\u00f3n Kit Maestro -->\n    <div class=\"mt-8 p-6 geist-card rounded-xl border border-[#333333] flex flex-col lg:flex-row items-center justify-between gap-6\">\n      <div>\n        <span class=\"text-xs font-mono text-[#00e599] bg-[#00e599]/10 border border-[#00e599]/30 px-2 py-0.5 rounded uppercase\">Acceso Todo en Uno</span>\n        <h3 class=\"text-lg font-bold text-white mt-2\">Kit Maestro Trilateral: 35+ Plantillas Completas para PA, CO y CR</h3>\n        <p class=\"text-xs text-[#888888] mt-1 max-w-2xl\">\n          Descarga en un solo archivo todos los formularios, matrices financieras y formatos legales en .xlsx y .docx con derecho a actualizaciones anuales autom\u00e1ticas ante reformas legislativas.\n        </p>\n      </div>\n      <div class=\"flex items-center gap-4\">\n        <div class=\"text-right\">\n          <div class=\"text-xs font-mono line-through text-[#666666]\">$249.00 USD</div>\n          <div class=\"text-2xl font-bold font-mono text-white\">$149.00 USD</div>\n        </div>\n        <button onclick=\"openModal('download-modal')\" class=\"h-10 px-5 text-xs font-semibold text-black bg-white hover:bg-[#eaeaea] rounded-md transition-colors\">\n          Comprar Kit Maestro\n        </button>\n      </div>\n    </div>\n  </main>\n\n  <!-- ========================================================================= -->\n  <!-- SECCI\u00d3N 6: DASHBOARD DE SEGUIMIENTO (KANBAN + AUDITOR\u00cdA DE PLIEGOS)      -->\n  <!-- ========================================================================= -->\n  <main id=\"view-kanban\" class=\"view-content max-w-[1440px] mx-auto px-4 sm:px-6 pt-8\">\n    <div class=\"flex flex-col md:flex-row md:items-center justify-between pb-6 border-b border-[#1f1f1f] gap-4\">\n      <div>\n        <div class=\"flex items-center gap-2\">\n          <span class=\"text-xs font-mono text-white bg-[#111111] px-2 py-0.5 rounded border border-[#2e2e2e]\">PIPELINE DE LICITACIONES</span>\n          <span class=\"text-xs font-mono text-[#888888]\">12 Procesos en Gesti\u00f3n Activa</span>\n        </div>\n        <h2 class=\"text-2xl font-bold tracking-tight text-white mt-1\">Tablero de Control del Ciclo de Vida</h2>\n      </div>\n\n      <div class=\"flex items-center gap-3\">\n        <button onclick=\"openModal('trap-modal')\" class=\"h-9 px-3 text-xs font-medium text-[#f5a623] bg-[#f5a623]/10 border border-[#f5a623]/30 rounded-md hover:bg-[#f5a623]/20 transition-colors inline-flex items-center gap-1.5\">\n          <svg class=\"w-4 h-4\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z\"/></svg>\n          Visor de Cl\u00e1usulas Trampa (3 detectadas)\n        </button>\n        <button class=\"h-9 px-3.5 text-xs font-medium text-black bg-white hover:bg-[#eaeaea] rounded-md transition-colors font-semibold\">\n          + Agregar Licitaci\u00f3n por Pliego\n        </button>\n      </div>\n    </div>\n\n    <!-- Tablero Kanban (6 Columnas) -->\n    <div class=\"grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-3.5 mt-6 overflow-x-auto min-h-[600px] pb-6\">\n      \n      <!-- COL 1: DETECTADA -->\n      <div class=\"bg-[#080808] border border-[#1a1a1a] rounded-lg p-3 flex flex-col min-w-[210px]\">\n        <div class=\"flex items-center justify-between text-xs font-mono text-[#888888] pb-2 border-b border-[#1f1f1f]\">\n          <span class=\"text-white font-medium\">1. Detectada</span>\n          <span class=\"bg-[#141414] px-1.5 py-0.2 rounded text-[11px]\">3</span>\n        </div>\n        <div class=\"mt-3 space-y-2.5 flex-1\">\n          <!-- Card Kanban -->\n          <div class=\"geist-card p-3 rounded-md text-xs cursor-pointer hover:border-[#444444]\">\n            <div class=\"flex items-center justify-between font-mono text-[10px] text-[#888888] mb-1\">\n              <span>\ud83c\uddf5\ud83c\udde6 DGCP-2025</span>\n              <span class=\"text-[#00e599]\">$4.2M</span>\n            </div>\n            <div class=\"font-medium text-white line-clamp-2\">Rehabilitaci\u00f3n de Puente Centenario</div>\n            <div class=\"mt-2 text-[10px] font-mono text-[#666666]\">Cierre en 14 d\u00edas</div>\n          </div>\n          <div class=\"geist-card p-3 rounded-md text-xs cursor-pointer hover:border-[#444444]\">\n            <div class=\"flex items-center justify-between font-mono text-[10px] text-[#888888] mb-1\">\n              <span>\ud83c\udde8\ud83c\uddf7 SICOP-CR</span>\n              <span class=\"text-[#00e599]\">$890K</span>\n            </div>\n            <div class=\"font-medium text-white line-clamp-2\">Licenciamiento Oracle Poder Judicial</div>\n            <div class=\"mt-2 text-[10px] font-mono text-[#666666]\">Cierre en 21 d\u00edas</div>\n          </div>\n        </div>\n      </div>\n\n      <!-- COL 2: EN EVALUACI\u00d3N -->\n      <div class=\"bg-[#080808] border border-[#1a1a1a] rounded-lg p-3 flex flex-col min-w-[210px]\">\n        <div class=\"flex items-center justify-between text-xs font-mono text-[#888888] pb-2 border-b border-[#1f1f1f]\">\n          <span class=\"text-white font-medium\">2. En Evaluaci\u00f3n</span>\n          <span class=\"bg-[#141414] px-1.5 py-0.2 rounded text-[11px]\">2</span>\n        </div>\n        <div class=\"mt-3 space-y-2.5 flex-1\">\n          <div class=\"geist-card p-3 rounded-md text-xs cursor-pointer border-l-2 border-l-[#0070f3]\">\n            <div class=\"flex items-center justify-between font-mono text-[10px] text-[#888888] mb-1\">\n              <span>\ud83c\udde8\ud83c\uddf4 SECOP II</span>\n              <span class=\"text-[#00e599]\">$1.8M</span>\n            </div>\n            <div class=\"font-medium text-white line-clamp-2\">Interventor\u00eda Hospital Militar Central</div>\n            <div class=\"mt-2 flex items-center justify-between text-[10px] font-mono\">\n              <span class=\"text-[#0070f3]\">Score: 78%</span>\n              <span class=\"text-[#888888]\">Equipo APU</span>\n            </div>\n          </div>\n        </div>\n      </div>\n\n      <!-- COL 3: AUDITANDO PLIEGO -->\n      <div class=\"bg-[#080808] border border-[#1a1a1a] rounded-lg p-3 flex flex-col min-w-[210px]\">\n        <div class=\"flex items-center justify-between text-xs font-mono text-[#888888] pb-2 border-b border-[#1f1f1f]\">\n          <span class=\"text-[#f5a623] font-medium\">3. Auditando Pliego</span>\n          <span class=\"bg-[#f5a623]/10 text-[#f5a623] px-1.5 py-0.2 rounded text-[11px]\">2</span>\n        </div>\n        <div class=\"mt-3 space-y-2.5 flex-1\">\n          <div class=\"geist-card p-3 rounded-md text-xs cursor-pointer border-l-2 border-l-[#f5a623] bg-[#f5a623]/5\">\n            <div class=\"flex items-center justify-between font-mono text-[10px] text-[#888888] mb-1\">\n              <span>\ud83c\uddf5\ud83c\udde6 METRO-L1</span>\n              <span class=\"text-[#f5a623] font-bold\">\u26a0\ufe0f RIESGO</span>\n            </div>\n            <div class=\"font-medium text-white line-clamp-2\">Mantenimiento Tracci\u00f3n El\u00e9ctrica</div>\n            <div class=\"mt-2 text-[10px] font-mono text-[#f5a623]\">2 Cl\u00e1usulas trampa halladas</div>\n          </div>\n        </div>\n      </div>\n\n      <!-- COL 4: OFERTA EN PREPARACI\u00d3N -->\n      <div class=\"bg-[#080808] border border-[#1a1a1a] rounded-lg p-3 flex flex-col min-w-[210px]\">\n        <div class=\"flex items-center justify-between text-xs font-mono text-[#888888] pb-2 border-b border-[#1f1f1f]\">\n          <span class=\"text-white font-medium\">4. Preparando Oferta</span>\n          <span class=\"bg-[#141414] px-1.5 py-0.2 rounded text-[11px]\">3</span>\n        </div>\n        <div class=\"mt-3 space-y-2.5 flex-1\">\n          <div class=\"geist-card p-3 rounded-md text-xs cursor-pointer\">\n            <div class=\"flex items-center justify-between font-mono text-[10px] text-[#888888] mb-1\">\n              <span>\ud83c\udde8\ud83c\uddf4 INVIAS-CUSIANA</span>\n              <span class=\"text-[#00e599]\">$11.4M</span>\n            </div>\n            <div class=\"font-medium text-white line-clamp-2\">Corredor Transversal Cusiana</div>\n            <div class=\"mt-2 flex items-center justify-between text-[10px] font-mono\">\n              <span class=\"text-[#00e599]\">Formatos: 4/5</span>\n              <span class=\"text-[#f5a623]\">18h restantes</span>\n            </div>\n          </div>\n        </div>\n      </div>\n\n      <!-- COL 5: PRESENTADA -->\n      <div class=\"bg-[#080808] border border-[#1a1a1a] rounded-lg p-3 flex flex-col min-w-[210px]\">\n        <div class=\"flex items-center justify-between text-xs font-mono text-[#888888] pb-2 border-b border-[#1f1f1f]\">\n          <span class=\"text-white font-medium\">5. Presentada</span>\n          <span class=\"bg-[#141414] px-1.5 py-0.2 rounded text-[11px]\">1</span>\n        </div>\n        <div class=\"mt-3 space-y-2.5 flex-1\">\n          <div class=\"geist-card p-3 rounded-md text-xs cursor-pointer\">\n            <div class=\"flex items-center justify-between font-mono text-[10px] text-[#888888] mb-1\">\n              <span>\ud83c\udde8\ud83c\uddf7 CCSS-EDUS</span>\n              <span class=\"text-[#888888]\">EN REVISI\u00d3N</span>\n            </div>\n            <div class=\"font-medium text-white line-clamp-2\">Servidores Hiperconvergentes</div>\n            <div class=\"mt-2 text-[10px] font-mono text-[#00e599]\">Radicado N\u00b0 9812-SICOP</div>\n          </div>\n        </div>\n      </div>\n\n      <!-- COL 6: ADJUDICADA -->\n      <div class=\"bg-[#080808] border border-[#1a1a1a] rounded-lg p-3 flex flex-col min-w-[210px]\">\n        <div class=\"flex items-center justify-between text-xs font-mono text-[#888888] pb-2 border-b border-[#1f1f1f]\">\n          <span class=\"text-[#00e599] font-medium\">6. Adjudicada</span>\n          <span class=\"bg-[#00e599]/15 text-[#00e599] px-1.5 py-0.2 rounded text-[11px]\">1</span>\n        </div>\n        <div class=\"mt-3 space-y-2.5 flex-1\">\n          <div class=\"geist-card p-3 rounded-md text-xs cursor-pointer border-l-2 border-l-[#00e599] bg-[#00e599]/5\">\n            <div class=\"flex items-center justify-between font-mono text-[10px] text-[#888888] mb-1\">\n              <span>\ud83c\uddf5\ud83c\udde6 ACP-CANAL</span>\n              <span class=\"text-[#00e599]\">GANADA</span>\n            </div>\n            <div class=\"font-medium text-white line-clamp-2\">Suministro de V\u00e1lvulas Esclusas Miraflores</div>\n            <div class=\"mt-2 text-[10px] font-mono text-white font-semibold\">$3,200,000 USD</div>\n          </div>\n        </div>\n      </div>\n\n    </div>\n  </main>\n\n  <!-- ========================================================================= -->\n  <!-- SECCI\u00d3N 7: CENTRO DE NOTIFICACIONES MULTICANAL                           -->\n  <!-- ========================================================================= -->\n  <main id=\"view-notifications\" class=\"view-content max-w-[1440px] mx-auto px-4 sm:px-6 pt-8\">\n    <div class=\"pb-6 border-b border-[#1f1f1f]\">\n      <div class=\"inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-mono bg-[#111111] text-[#888888] border border-[#2e2e2e]\">\n        SISTEMA DE DESPACHO MULTI-PROTOCOLO\n      </div>\n      <h2 class=\"text-2xl font-bold tracking-tight text-white mt-1\">Centro de Alertas Tempranas y Webhooks</h2>\n      <p class=\"text-xs text-[#888888]\">Configura c\u00f3mo y cu\u00e1ndo tu equipo de licitaciones y directivos reciben alertas de adendas, suspensiones y nuevos pliegos.</p>\n    </div>\n\n    <div class=\"grid grid-cols-1 lg:grid-cols-12 gap-8 mt-6\">\n      \n      <!-- Canales de Env\u00edo (8 Cols) -->\n      <div class=\"lg:col-span-8 space-y-4\">\n        \n        <!-- Canal 1: Dossier Diario 7:00 AM -->\n        <div class=\"geist-card p-4 rounded-xl flex items-start justify-between gap-4\">\n          <div class=\"flex items-start gap-3\">\n            <div class=\"w-10 h-10 rounded-lg bg-[#111111] border border-[#2e2e2e] flex items-center justify-center text-white text-lg\">\n              \u2709\ufe0f\n            </div>\n            <div>\n              <div class=\"flex items-center gap-2\">\n                <h4 class=\"text-sm font-semibold text-white\">Dossier Matutino por Correo (7:00 a.m.)</h4>\n                <span class=\"text-[10px] font-mono bg-[#00e599]/10 text-[#00e599] border border-[#00e599]/30 px-1.5 py-0.2 rounded\">ACTIVO</span>\n              </div>\n              <p class=\"text-xs text-[#888888] mt-1\">\n                Resumen ejecutivo diario con licitaciones filtradas por sus c\u00f3digos UNSPSC y rango de presupuesto antes de que inicie la jornada laboral.\n              </p>\n              <div class=\"mt-2 text-xs font-mono text-[#666666]\">Destinatarios: licitaciones@constructora.com, presidencia@constructora.com</div>\n            </div>\n          </div>\n          <label class=\"relative inline-flex items-center cursor-pointer\">\n            <input type=\"checkbox\" checked class=\"sr-only peer\">\n            <div class=\"w-9 h-5 bg-[#222222] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#0070f3]\"></div>\n          </label>\n        </div>\n\n        <!-- Canal 2: Slack & Teams Webhooks -->\n        <div class=\"geist-card p-4 rounded-xl flex items-start justify-between gap-4\">\n          <div class=\"flex items-start gap-3\">\n            <div class=\"w-10 h-10 rounded-lg bg-[#111111] border border-[#2e2e2e] flex items-center justify-center text-white text-lg\">\n              \u26a1\n            </div>\n            <div class=\"flex-1\">\n              <div class=\"flex items-center gap-2\">\n                <h4 class=\"text-sm font-semibold text-white\">Integraci\u00f3n Slack / Microsoft Teams (Webhooks)</h4>\n                <span class=\"text-[10px] font-mono bg-[#0070f3]/10 text-[#0070f3] border border-[#0070f3]/30 px-1.5 py-0.2 rounded\">CANAL #LICITACIONES-WAR-ROOM</span>\n              </div>\n              <p class=\"text-xs text-[#888888] mt-1\">\n                Disparo instant\u00e1neo ante publicaci\u00f3n de adendas, modificaciones al cronograma o respuestas a solicitudes de aclaraci\u00f3n.\n              </p>\n              <div class=\"mt-2 flex items-center gap-2\">\n                <input type=\"text\" value=\"https://hooks.slack.com/services/T00/B00/X891726354...\" class=\"w-full max-w-md h-7 px-2 text-xs font-mono bg-black border border-[#2e2e2e] rounded text-[#888888]\" readonly>\n                <button class=\"h-7 px-2.5 text-xs font-mono bg-[#1a1a1a] border border-[#333333] hover:text-white rounded\">Test Ping</button>\n              </div>\n            </div>\n          </div>\n          <label class=\"relative inline-flex items-center cursor-pointer\">\n            <input type=\"checkbox\" checked class=\"sr-only peer\">\n            <div class=\"w-9 h-5 bg-[#222222] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#0070f3]\"></div>\n          </label>\n        </div>\n\n        <!-- Canal 3: WhatsApp Ejecutivo -->\n        <div class=\"geist-card p-4 rounded-xl flex items-start justify-between gap-4\">\n          <div class=\"flex items-start gap-3\">\n            <div class=\"w-10 h-10 rounded-lg bg-[#111111] border border-[#2e2e2e] flex items-center justify-center text-white text-lg\">\n              \ud83d\udcac\n            </div>\n            <div>\n              <div class=\"flex items-center gap-2\">\n                <h4 class=\"text-sm font-semibold text-white\">Alertas VIP Instant\u00e1neas por WhatsApp</h4>\n                <span class=\"text-[10px] font-mono bg-[#00e599]/10 text-[#00e599] border border-[#00e599]/30 px-1.5 py-0.2 rounded\">SOLO DIRECTIVOS</span>\n              </div>\n              <p class=\"text-xs text-[#888888] mt-1\">\n                Notificaci\u00f3n ultra-r\u00e1pida directamente al tel\u00e9fono celular del representante legal ante actos de adjudicaci\u00f3n o descalificaci\u00f3n preliminar.\n              </p>\n              <div class=\"mt-2 text-xs font-mono text-[#666666]\">+507 6899-0012 (Panam\u00e1), +57 310 455-8900 (Colombia)</div>\n            </div>\n          </div>\n          <label class=\"relative inline-flex items-center cursor-pointer\">\n            <input type=\"checkbox\" checked class=\"sr-only peer\">\n            <div class=\"w-9 h-5 bg-[#222222] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#0070f3]\"></div>\n          </label>\n        </div>\n\n      </div>\n\n      <!-- Bandeja Hist\u00f3rica de Notificaciones (4 Cols) -->\n      <div class=\"lg:col-span-4 geist-card p-4 rounded-xl\">\n        <div class=\"flex items-center justify-between pb-3 border-b border-[#1f1f1f]\">\n          <span class=\"text-xs font-mono font-medium text-white\">HISTORIAL EN TIEMPO REAL</span>\n          <span class=\"text-[10px] font-mono text-[#888888]\">\u00daltimas 24h</span>\n        </div>\n        <div class=\"mt-3 space-y-3\">\n          <div class=\"p-2.5 rounded bg-[#111111] border border-[#222222] text-xs space-y-1\">\n            <div class=\"flex items-center justify-between font-mono text-[10px]\">\n              <span class=\"text-[#f5a623]\">ADENDA PUBLICADA</span>\n              <span class=\"text-[#666666]\">Hace 12m</span>\n            </div>\n            <div class=\"font-medium text-white\">Metro de Panam\u00e1: Modificaci\u00f3n de fecha de homologaci\u00f3n</div>\n            <div class=\"text-[11px] text-[#888888]\">Se traslada para el 4 de Marzo a solicitud de 3 proponentes.</div>\n          </div>\n\n          <div class=\"p-2.5 rounded bg-[#111111] border border-[#222222] text-xs space-y-1\">\n            <div class=\"flex items-center justify-between font-mono text-[10px]\">\n              <span class=\"text-[#00e599]\">RESPUESTA A ACLARACI\u00d3N</span>\n              <span class=\"text-[#666666]\">Hace 1h</span>\n            </div>\n            <div class=\"font-medium text-white\">INVIAS: Acogida observaci\u00f3n sobre \u00edndices RUP</div>\n            <div class=\"text-[11px] text-[#888888]\">La entidad acepta el promedio de endeudamiento en consorcio.</div>\n          </div>\n\n          <div class=\"p-2.5 rounded bg-[#111111] border border-[#222222] text-xs space-y-1\">\n            <div class=\"flex items-center justify-between font-mono text-[10px]\">\n              <span class=\"text-[#0070f3]\">NUEVO PLIEGO RELEVANTE</span>\n              <span class=\"text-[#666666]\">Hace 3h</span>\n            </div>\n            <div class=\"font-medium text-white\">SICOP: CCSS publica compra de servidores $5.6M</div>\n            <div class=\"text-[11px] text-[#888888]\">Coincidencia del 98% con su portafolio UNSPSC registrado.</div>\n          </div>\n        </div>\n      </div>\n\n    </div>\n  </main>\n\n  <!-- ========================================================================= -->\n  <!-- SECCI\u00d3N 8: PLANES, BENEFICIOS Y FACTURACI\u00d3N EMPRESARIAL                  -->\n  <!-- ========================================================================= -->\n  <main id=\"view-pricing\" class=\"view-content max-w-[1440px] mx-auto px-4 sm:px-6 pt-8\">\n    <div class=\"text-center max-w-2xl mx-auto mb-10\">\n      <span class=\"text-xs font-mono text-[#0070f3] bg-[#0070f3]/10 border border-[#0070f3]/30 px-2.5 py-1 rounded-full uppercase\">\n        Suscripci\u00f3n Corporativa Sin Fricci\u00f3n\n      </span>\n      <h2 class=\"text-3xl font-bold tracking-tight text-white mt-3\">Planes dise\u00f1ados para ganar licitaciones</h2>\n      <p class=\"text-xs sm:text-sm text-[#888888] mt-2\">\n        Facturaci\u00f3n con soporte de impuestos y deducci\u00f3n fiscal completa ante la DGI (Panam\u00e1), DIAN (Colombia) y Ministerio de Hacienda (Costa Rica).\n      </p>\n    </div>\n\n    <!-- Comparativa de Planes -->\n    <div class=\"grid grid-cols-1 md:grid-cols-3 gap-6\">\n      \n      <!-- PLAN 1: GRATUITO -->\n      <div class=\"geist-card p-6 rounded-xl flex flex-col justify-between\">\n        <div>\n          <div class=\"text-xs font-mono text-[#888888] uppercase\">Explorador B\u00e1sico</div>\n          <div class=\"text-2xl font-bold font-mono text-white mt-2\">$0 <span class=\"text-xs font-normal text-[#666666]\">/ para siempre</span></div>\n          <p class=\"text-xs text-[#888888] mt-2\">Para profesionales independientes que exploran oportunidades en Panam\u00e1Compra, SECOP II y SICOP.</p>\n          \n          <ul class=\"mt-6 space-y-2.5 text-xs text-[#eaeaea] border-t border-[#1f1f1f] pt-4\">\n            <li class=\"flex items-center gap-2\">\u2713 B\u00fasqueda universal ilimitada</li>\n            <li class=\"flex items-center gap-2\">\u2713 Alertas por correo 1 vez por semana</li>\n            <li class=\"flex items-center gap-2 text-[#666666]\">\u2715 Diagn\u00f3sticos de IA deshabilitados</li>\n            <li class=\"flex items-center gap-2 text-[#666666]\">\u2715 Plantillas oficiales no incluidas</li>\n          </ul>\n        </div>\n        <button class=\"w-full mt-6 h-9 text-xs font-medium bg-[#161616] hover:bg-[#222222] border border-[#2e2e2e] text-white rounded-md transition-colors\">\n          Cuenta Gratuita\n        </button>\n      </div>\n\n      <!-- PLAN 2: PRO INDIVIDUAL -->\n      <div class=\"geist-card p-6 rounded-xl flex flex-col justify-between border-2 border-[#0070f3]\">\n        <div>\n          <div class=\"flex items-center justify-between\">\n            <span class=\"text-xs font-mono text-[#0070f3] uppercase font-semibold\">Pro Licitador</span>\n            <span class=\"text-[10px] font-mono bg-[#0070f3] text-white px-2 py-0.5 rounded-full\">POPULAR</span>\n          </div>\n          <div class=\"text-2xl font-bold font-mono text-white mt-2\">$49 <span class=\"text-xs font-normal text-[#888888]\">USD / mes</span></div>\n          <p class=\"text-xs text-[#888888] mt-2\">Para especialistas en licitaciones que requieren auditar pliegos y recibir adendas en tiempo real.</p>\n          \n          <ul class=\"mt-6 space-y-2.5 text-xs text-[#eaeaea] border-t border-[#1f1f1f] pt-4\">\n            <li class=\"flex items-center gap-2\">\u2713 Alertas multicanal (Email 7am + Push)</li>\n            <li class=\"flex items-center gap-2\">\u2713 25 Diagn\u00f3sticos de IA por mes</li>\n            <li class=\"flex items-center gap-2\">\u2713 Detecci\u00f3n de cl\u00e1usulas trampa en pliegos</li>\n            <li class=\"flex items-center gap-2\">\u2713 30% de descuento en el cat\u00e1logo de plantillas</li>\n          </ul>\n        </div>\n        <button onclick=\"openModal('checkout-modal')\" class=\"w-full mt-6 h-9 text-xs font-medium bg-white text-black hover:bg-[#eaeaea] rounded-md transition-colors font-semibold\">\n          Iniciar Prueba Pro (14 d\u00edas)\n        </button>\n      </div>\n\n      <!-- PLAN 3: EQUIPOS Y CONSORCIOS -->\n      <div class=\"geist-card p-6 rounded-xl flex flex-col justify-between\">\n        <div>\n          <div class=\"text-xs font-mono text-[#00e599] uppercase font-semibold\">Equipos & Corporaciones</div>\n          <div class=\"text-2xl font-bold font-mono text-white mt-2\">$189 <span class=\"text-xs font-normal text-[#888888]\">USD / mes</span></div>\n          <p class=\"text-xs text-[#888888] mt-2\">Para firmas constructoras, farmac\u00e9uticas y consorcios que operan en m\u00faltiples pa\u00edses simult\u00e1neamente.</p>\n          \n          <ul class=\"mt-6 space-y-2.5 text-xs text-[#eaeaea] border-t border-[#1f1f1f] pt-4\">\n            <li class=\"flex items-center gap-2\">\u2713 Asientos ilimitados para colaboradores</li>\n            <li class=\"flex items-center gap-2\">\u2713 Diagn\u00f3sticos IA ilimitados y Win-Rate Score</li>\n            <li class=\"flex items-center gap-2\">\u2713 Generador Asistido IA: Diligenciamiento de pliegos</li>\n            <li class=\"flex items-center gap-2\">\u2713 Acceso TOTAL a las 35+ plantillas oficiales</li>\n            <li class=\"flex items-center gap-2\">\u2713 Webhooks Slack/Teams y WhatsApp Directivo</li>\n          </ul>\n        </div>\n        <button onclick=\"openModal('checkout-modal')\" class=\"w-full mt-6 h-9 text-xs font-medium bg-white text-black hover:bg-[#eaeaea] rounded-md transition-colors font-semibold\">\n          Comenzar Plan Equipos\n        </button>\n      </div>\n\n    </div>\n\n    <!-- Pasarelas de Pago Locales y Facturaci\u00f3n Fiscal -->\n    <div class=\"mt-10 geist-card p-6 rounded-xl\">\n      <div class=\"flex flex-col md:flex-row md:items-center justify-between pb-6 border-b border-[#1f1f1f] gap-4\">\n        <div>\n          <h3 class=\"text-base font-semibold text-white\">M\u00e9todos de Pago Locales y Moneda Oficial</h3>\n          <p class=\"text-xs text-[#888888]\">Procesamiento instant\u00e1neo en moneda local o tarjeta internacional de cr\u00e9dito empresarial.</p>\n        </div>\n        <div class=\"flex flex-wrap items-center gap-3\">\n          <span class=\"px-2.5 py-1 rounded bg-[#111111] border border-[#2e2e2e] text-xs font-mono\">\ud83c\uddf5\ud83c\udde6 Yappy Comercial</span>\n          <span class=\"px-2.5 py-1 rounded bg-[#111111] border border-[#2e2e2e] text-xs font-mono\">\ud83c\udde8\ud83c\uddf4 PSE / Nequi / Bancolombia</span>\n          <span class=\"px-2.5 py-1 rounded bg-[#111111] border border-[#2e2e2e] text-xs font-mono\">\ud83c\udde8\ud83c\uddf7 SINPE M\u00f3vil Empresas</span>\n          <span class=\"px-2.5 py-1 rounded bg-[#111111] border border-[#2e2e2e] text-xs font-mono\">\ud83d\udcb3 Visa / Master / AMEX</span>\n        </div>\n      </div>\n\n      <!-- Historial de Facturas con Validaci\u00f3n Fiscal -->\n      <div class=\"mt-6\">\n        <h4 class=\"text-xs font-mono text-[#888888] uppercase mb-3\">Historial de Facturaci\u00f3n Electr\u00f3nica Fiscal</h4>\n        <div class=\"border border-[#1f1f1f] rounded-lg overflow-x-auto\">\n          <table class=\"w-full text-left text-xs font-mono\">\n            <thead class=\"bg-[#111111] text-[#888888] border-b border-[#1f1f1f]\">\n              <tr>\n                <th class=\"p-3\">Factura N\u00b0</th>\n                <th class=\"p-3\">Fecha</th>\n                <th class=\"p-3\">Monto</th>\n                <th class=\"p-3\">Jurisdicci\u00f3n Fiscal</th>\n                <th class=\"p-3\">Estado DIAN / DGI / Hacienda</th>\n                <th class=\"p-3 text-right\">Comprobante</th>\n              </tr>\n            </thead>\n            <tbody class=\"divide-y divide-[#1f1f1f]\">\n              <tr class=\"hover:bg-[#0f0f0f]\">\n                <td class=\"p-3 font-semibold text-white\">INV-2025-0912</td>\n                <td class=\"p-3 text-[#888888]\">15 Feb 2025</td>\n                <td class=\"p-3 text-white\">$189.00 USD</td>\n                <td class=\"p-3\">\ud83c\udde8\ud83c\uddf4 Colombia (NIT 901.442.110-3)</td>\n                <td class=\"p-3\"><span class=\"text-[#00e599] bg-[#00e599]/10 px-2 py-0.5 rounded\">DIAN Validada (CUFE \u2713)</span></td>\n                <td class=\"p-3 text-right\"><button class=\"text-[#0070f3] hover:underline\">Descargar XML / PDF</button></td>\n              </tr>\n              <tr class=\"hover:bg-[#0f0f0f]\">\n                <td class=\"p-3 font-semibold text-white\">INV-2025-0744</td>\n                <td class=\"p-3 text-[#888888]\">15 Ene 2025</td>\n                <td class=\"p-3 text-white\">$189.00 USD</td>\n                <td class=\"p-3\">\ud83c\uddf5\ud83c\udde6 Panam\u00e1 (RUC 155698-1-2021 DV 44)</td>\n                <td class=\"p-3\"><span class=\"text-[#00e599] bg-[#00e599]/10 px-2 py-0.5 rounded\">DGI Autorizada (CAFE \u2713)</span></td>\n                <td class=\"p-3 text-right\"><button class=\"text-[#0070f3] hover:underline\">Descargar Factura</button></td>\n              </tr>\n            </tbody>\n          </table>\n        </div>\n      </div>\n    </div>\n  </main>\n\n  <!-- ========================================================================= -->\n  <!-- SECCI\u00d3N 2: ONBOARDING CORPORATIVO GUIADO (WIZARD DE 4 PASOS)             -->\n  <!-- ========================================================================= -->\n  <main id=\"view-onboarding\" class=\"view-content max-w-3xl mx-auto px-4 sm:px-6 pt-10\">\n    <!-- Stepper de 4 Pasos -->\n    <div class=\"mb-8\">\n      <div class=\"flex items-center justify-between text-xs font-mono text-[#888888] mb-3\">\n        <span class=\"text-white font-medium\" id=\"step-title-label\">PASO 1 DE 4: DATOS LEGALES DE LA EMPRESA</span>\n        <span id=\"step-percentage\">25% COMPLETADO</span>\n      </div>\n      <div class=\"w-full bg-[#161616] h-1 rounded-full overflow-hidden\">\n        <div id=\"step-progress-bar\" class=\"bg-white h-full transition-all duration-300\" style=\"width: 25%\"></div>\n      </div>\n      <div class=\"flex justify-between mt-3 text-[11px] font-mono text-[#666666]\">\n        <span class=\"text-white\">1. Legal</span>\n        <span>2. Rubros UNSPSC</span>\n        <span>3. Acreditaci\u00f3n Activa</span>\n        <span>4. Equipo y Roles</span>\n      </div>\n    </div>\n\n    <!-- Contenedor del Formulario Onboarding -->\n    <div class=\"geist-card p-6 sm:p-8 rounded-xl border border-[#2e2e2e]\">\n      \n      <!-- PASO 1: DATOS LEGALES -->\n      <div id=\"wizard-step-1\" class=\"wizard-step space-y-4\">\n        <div>\n          <h3 class=\"text-lg font-bold text-white\">Identificaci\u00f3n Jur\u00eddica y Domicilio Fiscal</h3>\n          <p class=\"text-xs text-[#888888]\">Ingrese la informaci\u00f3n registrada ante la entidad tributaria del pa\u00eds sede.</p>\n        </div>\n\n        <div class=\"space-y-3 pt-2\">\n          <div>\n            <label class=\"block text-xs font-medium text-[#888888] mb-1\">Raz\u00f3n Social Completa</label>\n            <input type=\"text\" value=\"Consorcio de Ingenier\u00eda Andina S.A.S.\" class=\"w-full h-10 px-3 text-xs sm:text-sm text-white bg-black border border-[#2e2e2e] rounded-md focus:border-white focus:outline-none\">\n          </div>\n\n          <div class=\"grid grid-cols-1 sm:grid-cols-2 gap-3\">\n            <div>\n              <label class=\"block text-xs font-medium text-[#888888] mb-1\">Pa\u00eds Sede</label>\n              <select id=\"country-select-step\" onchange=\"updateTaxIdLabel()\" class=\"w-full h-10 px-3 text-xs sm:text-sm text-white bg-black border border-[#2e2e2e] rounded-md focus:border-white focus:outline-none\">\n                <option value=\"PA\">\ud83c\uddf5\ud83c\udde6 Panam\u00e1</option>\n                <option value=\"CO\" selected>\ud83c\udde8\ud83c\uddf4 Colombia</option>\n                <option value=\"CR\">\ud83c\udde8\ud83c\uddf7 Costa Rica</option>\n              </select>\n            </div>\n            <div>\n              <label id=\"tax-id-label\" class=\"block text-xs font-medium text-[#888888] mb-1\">NIT y D\u00edgito de Verificaci\u00f3n (Colombia)</label>\n              <input type=\"text\" value=\"901.442.110-3\" class=\"w-full h-10 px-3 text-xs sm:text-sm text-white bg-black border border-[#2e2e2e] rounded-md focus:border-white focus:outline-none font-mono\">\n            </div>\n          </div>\n\n          <div>\n            <label class=\"block text-xs font-medium text-[#888888] mb-1\">Rango de Facturaci\u00f3n Anual Consolidada (USD)</label>\n            <select class=\"w-full h-10 px-3 text-xs sm:text-sm text-white bg-black border border-[#2e2e2e] rounded-md focus:border-white focus:outline-none\">\n              <option>Menos de $500,000 USD (Mipyme)</option>\n              <option selected>$500,000 USD - $2,500,000 USD (Mediana Empresa)</option>\n              <option>$2,500,000 USD - $10,000,000 USD (Gran Proponente)</option>\n              <option>M\u00e1s de $10,000,000 USD (Corporativo Multinacional)</option>\n            </select>\n          </div>\n        </div>\n\n        <div class=\"pt-6 border-t border-[#1f1f1f] flex justify-end\">\n          <button onclick=\"goToStep(2)\" class=\"h-9 px-5 text-xs font-semibold text-black bg-white hover:bg-[#eaeaea] rounded-md transition-colors\">\n            Continuar al Paso 2 \u2192\n          </button>\n        </div>\n      </div>\n\n      <!-- PASO 2: MACRO-CATEGOR\u00cdAS -->\n      <div id=\"wizard-step-2\" class=\"wizard-step space-y-4 hidden\">\n        <div>\n          <h3 class=\"text-lg font-bold text-white\">Selecci\u00f3n de Macro-Categor\u00edas y C\u00f3digos UNSPSC</h3>\n          <p class=\"text-xs text-[#888888]\">Seleccione los rubros contractuales en los que su firma compite habitualmente.</p>\n        </div>\n\n        <div class=\"grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-2\">\n          <label class=\"flex items-center gap-2 p-2.5 rounded bg-black border border-[#2e2e2e] text-xs cursor-pointer hover:border-[#444444]\">\n            <input type=\"checkbox\" checked class=\"rounded bg-black border-[#444444] text-[#0070f3]\">\n            <span class=\"text-white\">Obras Civiles</span>\n          </label>\n          <label class=\"flex items-center gap-2 p-2.5 rounded bg-black border border-[#2e2e2e] text-xs cursor-pointer hover:border-[#444444]\">\n            <input type=\"checkbox\" checked class=\"rounded bg-black border-[#444444] text-[#0070f3]\">\n            <span class=\"text-white\">Tecnolog\u00eda & Cloud</span>\n          </label>\n          <label class=\"flex items-center gap-2 p-2.5 rounded bg-black border border-[#2e2e2e] text-xs cursor-pointer hover:border-[#444444]\">\n            <input type=\"checkbox\" class=\"rounded bg-black border-[#444444] text-[#0070f3]\">\n            <span class=\"text-white\">Salud & F\u00e1rmacos</span>\n          </label>\n          <label class=\"flex items-center gap-2 p-2.5 rounded bg-black border border-[#2e2e2e] text-xs cursor-pointer hover:border-[#444444]\">\n            <input type=\"checkbox\" checked class=\"rounded bg-black border-[#444444] text-[#0070f3]\">\n            <span class=\"text-white\">Mantenimiento</span>\n          </label>\n          <label class=\"flex items-center gap-2 p-2.5 rounded bg-black border border-[#2e2e2e] text-xs cursor-pointer hover:border-[#444444]\">\n            <input type=\"checkbox\" class=\"rounded bg-black border-[#444444] text-[#0070f3]\">\n            <span class=\"text-white\">Transporte & Flota</span>\n          </label>\n          <label class=\"flex items-center gap-2 p-2.5 rounded bg-black border border-[#2e2e2e] text-xs cursor-pointer hover:border-[#444444]\">\n            <input type=\"checkbox\" class=\"rounded bg-black border-[#444444] text-[#0070f3]\">\n            <span class=\"text-white\">Alimentos & PAE</span>\n          </label>\n          <label class=\"flex items-center gap-2 p-2.5 rounded bg-black border border-[#2e2e2e] text-xs cursor-pointer hover:border-[#444444]\">\n            <input type=\"checkbox\" checked class=\"rounded bg-black border-[#444444] text-[#0070f3]\">\n            <span class=\"text-white\">Consultor\u00eda</span>\n          </label>\n          <label class=\"flex items-center gap-2 p-2.5 rounded bg-black border border-[#2e2e2e] text-xs cursor-pointer hover:border-[#444444]\">\n            <input type=\"checkbox\" class=\"rounded bg-black border-[#444444] text-[#0070f3]\">\n            <span class=\"text-white\">Seguridad Privada</span>\n          </label>\n          <label class=\"flex items-center gap-2 p-2.5 rounded bg-black border border-[#2e2e2e] text-xs cursor-pointer hover:border-[#444444]\">\n            <input type=\"checkbox\" class=\"rounded bg-black border-[#444444] text-[#0070f3]\">\n            <span class=\"text-white\">Limpieza & Aseo</span>\n          </label>\n        </div>\n\n        <div>\n          <label class=\"block text-xs font-medium text-[#888888] mb-1\">Segmentos UNSPSC Clave (separados por coma)</label>\n          <input type=\"text\" value=\"72101500, 72141000, 43211500, 81101500\" class=\"w-full h-10 px-3 text-xs text-white bg-black border border-[#2e2e2e] rounded-md font-mono\">\n        </div>\n\n        <div class=\"pt-6 border-t border-[#1f1f1f] flex justify-between\">\n          <button onclick=\"goToStep(1)\" class=\"h-9 px-4 text-xs font-medium text-[#888888] hover:text-white\">\u2190 Volver</button>\n          <button onclick=\"goToStep(3)\" class=\"h-9 px-5 text-xs font-semibold text-black bg-white hover:bg-[#eaeaea] rounded-md transition-colors\">\n            Continuar al Paso 3 \u2192\n          </button>\n        </div>\n      </div>\n\n      <!-- PASO 3: ACREDITACI\u00d3N ACTIVA -->\n      <div id=\"wizard-step-3\" class=\"wizard-step space-y-4 hidden\">\n        <div>\n          <h3 class=\"text-lg font-bold text-white\">Acreditaci\u00f3n Legal y Certificaciones Activas</h3>\n          <p class=\"text-xs text-[#888888]\">Vinculaci\u00f3n con los registros oficiales de proponentes seg\u00fan el pa\u00eds.</p>\n        </div>\n\n        <div class=\"space-y-3 pt-2\">\n          <div class=\"p-3 rounded-lg bg-black border border-[#2e2e2e]\">\n            <div class=\"flex items-center justify-between text-xs font-mono\">\n              <span class=\"text-white font-semibold\">\ud83c\udde8\ud83c\uddf4 Registro \u00danico de Proponentes (RUP - Colombia)</span>\n              <span class=\"text-[#00e599]\">CONECTADO \u2713</span>\n            </div>\n            <div class=\"mt-2 grid grid-cols-3 gap-2 text-center text-xs font-mono\">\n              <div class=\"p-2 rounded bg-[#0f0f0f] border border-[#1f1f1f]\">\n                <div class=\"text-[10px] text-[#888888]\">Liquidez</div>\n                <div class=\"text-white font-bold\">2.80</div>\n              </div>\n              <div class=\"p-2 rounded bg-[#0f0f0f] border border-[#1f1f1f]\">\n                <div class=\"text-[10px] text-[#888888]\">Endeudamiento</div>\n                <div class=\"text-[#f5a623] font-bold\">69.4%</div>\n              </div>\n              <div class=\"p-2 rounded bg-[#0f0f0f] border border-[#1f1f1f]\">\n                <div class=\"text-[10px] text-[#888888]\">Cobertura Int.</div>\n                <div class=\"text-white font-bold\">4.2x</div>\n              </div>\n            </div>\n          </div>\n\n          <div class=\"p-3 rounded-lg bg-black border border-[#2e2e2e]\">\n            <div class=\"flex items-center justify-between text-xs font-mono\">\n              <span class=\"text-white font-semibold\">\ud83c\uddf5\ud83c\udde6 Registro de Proponentes DGCP (Panam\u00e1)</span>\n              <button class=\"text-xs text-[#0070f3] hover:underline font-mono\">Vincular RUC</button>\n            </div>\n          </div>\n\n          <div class=\"p-3 rounded-lg bg-black border border-[#2e2e2e]\">\n            <div class=\"flex items-center justify-between text-xs font-mono\">\n              <span class=\"text-white font-semibold\">\ud83c\udde8\ud83c\uddf7 SICOP con Firma Digital BCCR (Costa Rica)</span>\n              <button class=\"text-xs text-[#0070f3] hover:underline font-mono\">Validar Certificado</button>\n            </div>\n          </div>\n        </div>\n\n        <div class=\"pt-6 border-t border-[#1f1f1f] flex justify-between\">\n          <button onclick=\"goToStep(2)\" class=\"h-9 px-4 text-xs font-medium text-[#888888] hover:text-white\">\u2190 Volver</button>\n          <button onclick=\"goToStep(4)\" class=\"h-9 px-5 text-xs font-semibold text-black bg-white hover:bg-[#eaeaea] rounded-md transition-colors\">\n            Continuar al Paso 4 \u2192\n          </button>\n        </div>\n      </div>\n\n      <!-- PASO 4: EQUIPO Y ROLES -->\n      <div id=\"wizard-step-4\" class=\"wizard-step space-y-4 hidden\">\n        <div>\n          <h3 class=\"text-lg font-bold text-white\">Invitaci\u00f3n y Gesti\u00f3n del Equipo de Licitaciones</h3>\n          <p class=\"text-xs text-[#888888]\">Asigne colaboradores con permisos espec\u00edficos para blindar la confidencialidad.</p>\n        </div>\n\n        <div class=\"space-y-3 pt-2\">\n          <div class=\"flex gap-2\">\n            <input type=\"email\" placeholder=\"correo.abogado@constructora.com\" class=\"flex-1 h-10 px-3 text-xs text-white bg-black border border-[#2e2e2e] rounded-md\">\n            <select class=\"h-10 px-3 text-xs text-white bg-black border border-[#2e2e2e] rounded-md\">\n              <option>Auditor Legal y Financiero</option>\n              <option>Preparador de Ofertas / APU</option>\n              <option>Administrador General</option>\n            </select>\n            <button class=\"px-3 text-xs font-medium text-black bg-white hover:bg-[#eaeaea] rounded-md font-mono\">Invitar</button>\n          </div>\n\n          <div class=\"border border-[#1f1f1f] rounded-lg divide-y divide-[#1f1f1f] text-xs font-mono\">\n            <div class=\"p-3 flex items-center justify-between\">\n              <div>\n                <div class=\"text-white\">carlos.mendoza@constructora.com</div>\n                <div class=\"text-[#666666] text-[10px]\">Preparador de Ofertas / APU (Ingeniero Senior)</div>\n              </div>\n              <span class=\"text-[#00e599] text-[10px]\">ACTIVO</span>\n            </div>\n            <div class=\"p-3 flex items-center justify-between\">\n              <div>\n                <div class=\"text-white\">dra.valenzuela@legal-andina.com</div>\n                <div class=\"text-[#666666] text-[10px]\">Auditor Legal y P\u00f3lizas</div>\n              </div>\n              <span class=\"text-[#f5a623] text-[10px]\">INVITACI\u00d3N PENDIENTE</span>\n            </div>\n          </div>\n        </div>\n\n        <div class=\"pt-6 border-t border-[#1f1f1f] flex justify-between\">\n          <button onclick=\"goToStep(3)\" class=\"h-9 px-4 text-xs font-medium text-[#888888] hover:text-white\">\u2190 Volver</button>\n          <button onclick=\"switchView('explorer')\" class=\"h-9 px-6 text-xs font-semibold text-black bg-white hover:bg-[#eaeaea] rounded-md transition-colors font-mono\">\n            Finalizar Onboarding e Ir al Pipeline \u2713\n          </button>\n        </div>\n      </div>\n\n    </div>\n  </main>\n\n  <!-- ========================================================================= -->\n  <!-- MODAL: AUTENTICACI\u00d3N EMPRESARIAL, SSO Y 2FA                              -->\n  <!-- ========================================================================= -->\n  <div id=\"auth-modal\" class=\"fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4\">\n    <div class=\"geist-card w-full max-w-[420px] p-6 rounded-xl border border-[#2e2e2e] shadow-2xl relative\">\n      <button onclick=\"closeModal('auth-modal')\" class=\"absolute top-4 right-4 text-[#888888] hover:text-white\">\u2715</button>\n\n      <div class=\"text-center mb-6\">\n        <svg height=\"24\" viewBox=\"0 0 115 100\" fill=\"currentColor\" class=\"mx-auto text-white mb-2\">\n          <path d=\"M57.5 0L115 100H0L57.5 0z\" />\n        </svg>\n        <h3 class=\"text-lg font-bold text-white tracking-tight\">Acceso Corporativo Seguro</h3>\n        <p class=\"text-xs text-[#888888] mt-1\">Plataforma de Compras P\u00fablicas de Panam\u00e1, Colombia y Costa Rica</p>\n      </div>\n\n      <!-- Botones SSO -->\n      <div class=\"space-y-2.5\">\n        <button class=\"w-full h-10 px-4 text-xs font-medium text-white bg-black border border-[#2e2e2e] hover:border-[#444444] rounded-md flex items-center justify-center gap-2.5 transition-colors\">\n          <svg class=\"w-4 h-4\" viewBox=\"0 0 24 24\"><path fill=\"#4285F4\" d=\"M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z\"/><path fill=\"#34A853\" d=\"M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.27 21.36 7.35 24 12 24z\"/><path fill=\"#FBBC05\" d=\"M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.14-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.98 0 12s.45 3.82 1.25 5.42l4.03-3.15z\"/><path fill=\"#EA4335\" d=\"M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.35 0 3.27 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z\"/></svg>\n          Google Workspace (Empresas)\n        </button>\n        <button class=\"w-full h-10 px-4 text-xs font-medium text-white bg-black border border-[#2e2e2e] hover:border-[#444444] rounded-md flex items-center justify-center gap-2.5 transition-colors\">\n          <svg class=\"w-4 h-4\" viewBox=\"0 0 24 24\"><path fill=\"#f25022\" d=\"M1 1h10v10H1z\"/><path fill=\"#00a4ef\" d=\"M1 13h10v10H1z\"/><path fill=\"#7fba00\" d=\"M13 1h10v10H13z\"/><path fill=\"#ffb900\" d=\"M13 13h10v10H13z\"/></svg>\n          Microsoft Entra ID / Office 365\n        </button>\n        <button class=\"w-full h-10 px-4 text-xs font-medium text-white bg-black border border-[#2e2e2e] hover:border-[#444444] rounded-md flex items-center justify-center gap-2.5 transition-colors\">\n          <svg class=\"w-4 h-4 fill-current\" viewBox=\"0 0 24 24\"><path fill-rule=\"evenodd\" clip-rule=\"evenodd\" d=\"M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z\"/></svg>\n          GitHub (Empresas Tech)\n        </button>\n      </div>\n\n      <div class=\"relative my-4\">\n        <div class=\"absolute inset-0 flex items-center\"><div class=\"w-full border-t border-[#1f1f1f]\"></div></div>\n        <div class=\"relative flex justify-center text-[10px] uppercase font-mono\"><span class=\"bg-[#0a0a0a] px-2 text-[#666666]\">O correo corporativo</span></div>\n      </div>\n\n      <!-- Detector de Correo Corporativo -->\n      <div class=\"space-y-3\">\n        <div>\n          <label class=\"block text-xs font-medium text-[#888888] mb-1\">Correo Electr\u00f3nico de la Empresa</label>\n          <input \n            type=\"email\" \n            id=\"corp-email-input\" \n            placeholder=\"ejemplo@constructora-andina.com\" \n            oninput=\"validateCorporateDomain(this.value)\"\n            class=\"w-full h-10 px-3 text-xs text-white placeholder-[#555555] bg-black border border-[#2e2e2e] rounded-md focus:border-white focus:outline-none\"\n          >\n          <div id=\"email-validation-feedback\" class=\"mt-1.5 text-[11px] font-mono text-[#888888]\">\n            Validando dominio empresarial...\n          </div>\n        </div>\n\n        <!-- 2FA Authenticator Code Input -->\n        <div class=\"p-3 bg-black border border-[#1f1f1f] rounded-lg\">\n          <div class=\"flex items-center justify-between mb-1.5\">\n            <label class=\"text-xs font-medium text-white flex items-center gap-1.5\">\n              <span>C\u00f3digo 2FA / MFA (6 d\u00edgitos)</span>\n              <span class=\"text-[10px] text-[#0070f3] font-mono\">Google/Microsoft Auth</span>\n            </label>\n            <span class=\"text-[10px] font-mono text-[#00e599]\">Requerido</span>\n          </div>\n          <div class=\"flex gap-2 justify-between\">\n            <input type=\"text\" maxlength=\"1\" value=\"4\" class=\"w-10 h-10 text-center font-mono text-sm bg-[#111111] border border-[#2e2e2e] text-white rounded\">\n            <input type=\"text\" maxlength=\"1\" value=\"8\" class=\"w-10 h-10 text-center font-mono text-sm bg-[#111111] border border-[#2e2e2e] text-white rounded\">\n            <input type=\"text\" maxlength=\"1\" value=\"2\" class=\"w-10 h-10 text-center font-mono text-sm bg-[#111111] border border-[#2e2e2e] text-white rounded\">\n            <input type=\"text\" maxlength=\"1\" value=\"9\" class=\"w-10 h-10 text-center font-mono text-sm bg-[#111111] border border-[#2e2e2e] text-white rounded\">\n            <input type=\"text\" maxlength=\"1\" value=\"1\" class=\"w-10 h-10 text-center font-mono text-sm bg-[#111111] border border-[#2e2e2e] text-white rounded\">\n            <input type=\"text\" maxlength=\"1\" value=\"5\" class=\"w-10 h-10 text-center font-mono text-sm bg-[#111111] border border-[#2e2e2e] text-white rounded\">\n          </div>\n        </div>\n\n        <button onclick=\"closeModal('auth-modal')\" class=\"w-full h-10 text-xs font-semibold text-black bg-white hover:bg-[#eaeaea] rounded-md transition-colors mt-2\">\n          Ingresar al Panel Seguro\n        </button>\n      </div>\n    </div>\n  </div>\n\n  <!-- ========================================================================= -->\n  <!-- MODAL: VISOR DE CL\u00c1USULAS TRAMPA (AUDITOR DE PLIEGOS)                    -->\n  <!-- ========================================================================= -->\n  <div id=\"trap-modal\" class=\"fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4\">\n    <div class=\"geist-card w-full max-w-2xl p-6 rounded-xl border border-[#2e2e2e] shadow-2xl relative max-h-[90vh] overflow-y-auto\">\n      <button onclick=\"closeModal('trap-modal')\" class=\"absolute top-4 right-4 text-[#888888] hover:text-white\">\u2715</button>\n\n      <div class=\"flex items-center gap-2 mb-2\">\n        <span class=\"text-xs font-mono text-[#f5a623] bg-[#f5a623]/10 border border-[#f5a623]/30 px-2 py-0.5 rounded\">\n          AUDITOR\u00cdA AUTOMATIZADA DE PLIEGO CON IA\n        </span>\n      </div>\n      <h3 class=\"text-lg font-bold text-white\">Cl\u00e1usulas Trampa y Restricciones Desproporcionadas</h3>\n      <p class=\"text-xs text-[#888888] mb-4\">Pliego: LP-INVIAS-024-2025 (Transversal del Cusiana)</p>\n\n      <div class=\"space-y-3\">\n        <!-- Trampa 1 -->\n        <div class=\"p-3.5 rounded-lg bg-black border border-[#ee0000]/40\">\n          <div class=\"flex items-center justify-between text-xs font-mono text-[#ee0000] font-semibold\">\n            <span>\ud83d\udea8 CL\u00c1USULA 5.4: EXPERIENCIA DEL PERSONAL CLAVE</span>\n            <span>ALTO RIESGO</span>\n          </div>\n          <p class=\"text-xs text-[#eaeaea] mt-1.5 leading-relaxed\">\n            \"El Especialista en Pavimentos debe acreditar tarjeta profesional emitida con un m\u00ednimo de 15 a\u00f1os y 5 certificaciones exclusivas en v\u00edas primarias de alta monta\u00f1a.\"\n          </p>\n          <div class=\"mt-2 text-[11px] font-mono text-[#888888] bg-[#111111] p-2 rounded border border-[#1f1f1f]\">\n            <strong>DIAGN\u00d3STICO JUR\u00cdDICO:</strong> Vulneraci\u00f3n directa a la Circular Externa N\u00b0 12 de Colombia Compra Eficiente sobre Pliegos Tipo. Esta cl\u00e1usula limita artificialmente la concurrencia. Debe ser objetada en el t\u00e9rmino de observaciones al pliego definitivo.\n          </div>\n        </div>\n\n        <!-- Trampa 2 -->\n        <div class=\"p-3.5 rounded-lg bg-black border border-[#f5a623]/40\">\n          <div class=\"flex items-center justify-between text-xs font-mono text-[#f5a623] font-semibold\">\n            <span>\u26a0\ufe0f CL\u00c1USULA 9.2: VIGENCIA DE LA P\u00d3LIZA DE SERIEDAD</span>\n            <span>RIESGO MEDIO</span>\n          </div>\n          <p class=\"text-xs text-[#eaeaea] mt-1.5 leading-relaxed\">\n            \"La p\u00f3liza de seriedad debe tener una vigencia de 180 d\u00edas calendario contados a partir del cierre, pero no permite pr\u00f3rrogas si se suspende el proceso.\"\n          </p>\n          <div class=\"mt-2 text-[11px] font-mono text-[#888888] bg-[#111111] p-2 rounded border border-[#1f1f1f]\">\n            <strong>DIAGN\u00d3STICO JUR\u00cdDICO:</strong> Riesgo de costo financiero oculto si la entidad decreta suspensiones reiteradas.\n          </div>\n        </div>\n      </div>\n\n      <div class=\"pt-4 mt-4 border-t border-[#1f1f1f] flex justify-end\">\n        <button onclick=\"openModal('clarification-modal'); closeModal('trap-modal');\" class=\"h-9 px-4 text-xs font-medium text-black bg-white rounded-md hover:bg-[#eaeaea]\">\n          Generar Escrito de Objeci\u00f3n Autom\u00e1tico \u2192\n        </button>\n      </div>\n    </div>\n  </div>\n\n  <!-- ========================================================================= -->\n  <!-- MODAL: GENERADOR DE ESCRITO DE OBJECI\u00d3N / HOMOLOGACI\u00d3N                   -->\n  <!-- ========================================================================= -->\n  <div id=\"clarification-modal\" class=\"fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4\">\n    <div class=\"geist-card w-full max-w-2xl p-6 rounded-xl border border-[#2e2e2e] shadow-2xl relative\">\n      <button onclick=\"closeModal('clarification-modal')\" class=\"absolute top-4 right-4 text-[#888888] hover:text-white\">\u2715</button>\n\n      <div class=\"flex items-center gap-2 mb-2\">\n        <span class=\"text-xs font-mono text-[#0070f3] bg-[#0070f3]/10 border border-[#0070f3]/30 px-2 py-0.5 rounded\">\n          BORRADOR FORMAL DE OBSERVACIONES\n        </span>\n      </div>\n      <h3 class=\"text-lg font-bold text-white\">Solicitud de Aclaraci\u00f3n / Objeci\u00f3n al Pliego</h3>\n      <p class=\"text-xs text-[#888888] mb-3\">Redactado autom\u00e1ticamente citando la jurisprudencia de contrataci\u00f3n estatal aplicable.</p>\n\n      <textarea class=\"w-full h-56 p-3 text-xs font-mono text-white bg-black border border-[#2e2e2e] rounded-md focus:border-white focus:outline-none leading-relaxed\" readonly>\nSE\u00d1ORES:\nINSTITUTO NACIONAL DE V\u00cdAS (INVIAS)\nCOMIT\u00c9 ASESOR Y EVALUADOR - LICITACI\u00d3N LP-INVIAS-024-2025\n\nASUNTO: Observaciones al Pliego Definitivo - Solicitud de Supresi\u00f3n de Cl\u00e1usula Restrictiva N\u00b0 5.4 (Personal Clave)\n\nRespetados Se\u00f1ores:\n\nEn ejercicio del principio de libre concurrencia, transparencia y de conformidad con los Pliegos Tipo adoptados por la Agencia Nacional de Contrataci\u00f3n P\u00fablica - Colombia Compra Eficiente (Decreto 342 y concordantes), nos permitimos solicitar formalmente la modificaci\u00f3n de la Cl\u00e1usula 5.4 del pliego definitivo de condiciones.\n\nFUNDAMENTACI\u00d3N JUR\u00cdDICA:\nLa exigencia de 15 a\u00f1os de matr\u00edcula profesional ininterrumpida y 5 contratos en condiciones topogr\u00e1ficas id\u00e9nticas no guarda relaci\u00f3n de proporcionalidad con el objeto a contratar y contradice expresamente la matriz de experiencia del Documento Base de Pliegos Tipo.\n\nPETICI\u00d3N:\nSolicitamos comedidamente ajustar el requisito a los est\u00e1ndares autorizados por Colombia Compra Eficiente, permitiendo que la idoneidad sea demostrada con un m\u00e1ximo de 8 a\u00f1os de ejercicio profesional y contratos de igual naturaleza t\u00e9cnica sin restricciones geogr\u00e1ficas artificiales.\n\nAtentamente,\nREPRESENTANTE LEGAL / APODERADO ESPECIAL\nCONSORCIO DE INGENIER\u00cdA ANDINA\n      </textarea>\n\n      <div class=\"pt-4 flex justify-between items-center\">\n        <span class=\"text-[11px] font-mono text-[#00e599]\">\u2713 Cita art\u00edculos del Decreto 1082 y Pliegos Tipo</span>\n        <button onclick=\"closeModal('clarification-modal'); alert('Escrito copiado al portapapeles listo para radicar en el portal oficial.');\" class=\"h-9 px-4 text-xs font-semibold text-black bg-white rounded-md hover:bg-[#eaeaea]\">\n          Copiar Texto para Radicaci\u00f3n Oficial\n        </button>\n      </div>\n    </div>\n  </div>\n\n  <!-- ========================================================================= -->\n  <!-- MODAL: DILIGENCIADOR ASISTIDO IA                                         -->\n  <!-- ========================================================================= -->\n  <div id=\"ai-filler-modal\" class=\"fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4\">\n    <div class=\"geist-card w-full max-w-lg p-6 rounded-xl border border-[#2e2e2e] shadow-2xl relative\">\n      <button onclick=\"closeModal('ai-filler-modal')\" class=\"absolute top-4 right-4 text-[#888888] hover:text-white\">\u2715</button>\n\n      <div class=\"text-center mb-4\">\n        <div class=\"w-12 h-12 rounded-full bg-[#0070f3]/10 border border-[#0070f3]/30 flex items-center justify-center mx-auto text-[#0070f3] mb-2\">\n          <svg class=\"w-6 h-6\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12\"/></svg>\n        </div>\n        <h3 class=\"text-base font-bold text-white\">Generador Asistido: Pliego a Formatos Oficiales</h3>\n        <p class=\"text-xs text-[#888888]\">Carga el PDF del pliego y la IA completar\u00e1 los anexos requeridos para tu oferta.</p>\n      </div>\n\n      <div class=\"border-2 border-dashed border-[#2e2e2e] hover:border-[#444444] rounded-lg p-6 text-center cursor-pointer bg-black\">\n        <svg class=\"w-8 h-8 text-[#555555] mx-auto mb-2\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z\"/></svg>\n        <span class=\"text-xs text-white font-medium block\">Arrastra aqu\u00ed el Pliego de Condiciones (.PDF)</span>\n        <span class=\"text-[10px] text-[#666666] block mt-1\">Soporta Panam\u00e1Compra, SECOP II y SICOP (hasta 100MB)</span>\n      </div>\n\n      <div class=\"mt-4 p-3 rounded bg-[#111111] border border-[#1f1f1f] text-xs font-mono space-y-1\">\n        <div class=\"text-[#888888]\">Formatos que se generar\u00e1n:</div>\n        <div class=\"text-[#00e599]\">\u2713 Formato 1: Carta de Presentaci\u00f3n de Oferta</div>\n        <div class=\"text-[#00e599]\">\u2713 Formato 2: Conformaci\u00f3n de Proponente Plural</div>\n        <div class=\"text-[#00e599]\">\u2713 Matriz APU con c\u00e1lculo de AIU espec\u00edfico</div>\n      </div>\n\n      <button onclick=\"closeModal('ai-filler-modal'); alert('Procesando pliego con motor IA... Los archivos editables estar\u00e1n listos en 20 segundos.');\" class=\"w-full mt-4 h-10 text-xs font-semibold text-black bg-white hover:bg-[#eaeaea] rounded-md transition-colors\">\n        Comenzar Extracci\u00f3n y Diligenciamiento\n      </button>\n    </div>\n  </div>\n\n  <!-- ========================================================================= -->\n  <!-- MODAL: DESCARGA DE PLANTILLA / CHECKOUT DEMO                              -->\n  <!-- ========================================================================= -->\n  <div id=\"download-modal\" class=\"fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4\">\n    <div class=\"geist-card w-full max-w-md p-6 rounded-xl border border-[#2e2e2e] shadow-2xl relative\">\n      <button onclick=\"closeModal('download-modal')\" class=\"absolute top-4 right-4 text-[#888888] hover:text-white\">\u2715</button>\n\n      <span class=\"text-[10px] font-mono text-[#00e599] bg-[#00e599]/10 border border-[#00e599]/30 px-2 py-0.5 rounded\">\n        DESCARGA DIRECTA EDITABLE\n      </span>\n      <h3 class=\"text-base font-bold text-white mt-2\">Plantilla Oficial Formulada (.xlsx / .docx)</h3>\n      <p class=\"text-xs text-[#888888] mt-1\">Licencia de uso permanente para licitaciones p\u00fablicas de su empresa.</p>\n\n      <div class=\"my-4 p-3 bg-black border border-[#1f1f1f] rounded-lg text-xs font-mono space-y-1.5\">\n        <div class=\"flex justify-between\">\n          <span class=\"text-[#888888]\">Documento:</span>\n          <span class=\"text-white font-medium\">Formato Oficial de Licitaci\u00f3n</span>\n        </div>\n        <div class=\"flex justify-between\">\n          <span class=\"text-[#888888]\">Actualizaciones:</span>\n          <span class=\"text-[#00e599]\">Garantizadas ante reformas</span>\n        </div>\n        <div class=\"flex justify-between\">\n          <span class=\"text-[#888888]\">Formato:</span>\n          <span class=\"text-white\">Excel + Word + Notion Hub</span>\n        </div>\n      </div>\n\n      <div class=\"space-y-2\">\n        <button onclick=\"closeModal('download-modal'); alert('Descarga iniciada: El archivo .zip contiene la plantilla formulada y la gu\u00eda jur\u00eddica de diligenciamiento.');\" class=\"w-full h-10 text-xs font-semibold text-black bg-white hover:bg-[#eaeaea] rounded-md transition-colors\">\n          Confirmar Descarga Directa\n        </button>\n        <button onclick=\"closeModal('download-modal'); switchView('pricing');\" class=\"w-full h-9 text-xs text-[#888888] hover:text-white transition-colors\">\n          O adquiere el Plan Equipos con todo el cat\u00e1logo gratis \u2192\n        </button>\n      </div>\n    </div>\n  </div>\n\n  <!-- ========================================================================= -->\n  <!-- SCRIPTS Y CONTROLADORES DE INTERACCI\u00d3N                                    -->\n  <!-- ========================================================================= -->\n  \n",
-      }}
-    />
+    <div className="antialiased min-h-screen flex flex-col font-sans text-body-md overflow-x-hidden bg-[#F7F7F5] text-[#111111]">
+      {/* ==================== TOP NAVIGATION ==================== */}
+      <nav className="fixed top-0 w-full z-50 border-b border-zinc-200/60 bg-[#F7F7F5]/80 backdrop-blur-md transition-all">
+        <div className="max-w-[1280px] mx-auto px-6 sm:px-8 flex justify-between items-center h-[72px]">
+          <div className="flex items-center gap-10 lg:gap-12">
+            <a
+              href="#"
+              className="text-[22px] font-bold tracking-tighter text-zinc-900 transition-opacity hover:opacity-80"
+            >
+              Auralis
+            </a>
+            <div className="hidden md:flex items-center gap-6 text-sm font-medium tracking-tight text-zinc-500">
+              <a
+                href="#studio"
+                className="hover:text-zinc-900 transition-colors duration-200"
+              >
+                Auralis Studio
+              </a>
+              <a
+                href="#agents"
+                className="hover:text-zinc-900 transition-colors duration-200"
+              >
+                Auralis Agents
+              </a>
+              <a
+                href="#api"
+                className="hover:text-zinc-900 transition-colors duration-200"
+              >
+                Auralis API
+              </a>
+              <a
+                href="#resources"
+                className="hover:text-zinc-900 transition-colors duration-200"
+              >
+                Resources
+              </a>
+              <a
+                href="#enterprise"
+                className="hover:text-zinc-900 transition-colors duration-200"
+              >
+                Enterprise
+              </a>
+              <a
+                href="#pricing"
+                className="hover:text-zinc-900 transition-colors duration-200"
+              >
+                Pricing
+              </a>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <a
+              href="#signup"
+              className="hidden sm:inline-flex bg-black text-white px-5 py-2.5 rounded-full text-sm font-medium transition-all hover:bg-zinc-800 active:scale-95 shadow-sm"
+            >
+              Sign up
+            </a>
+            {/* Mobile menu trigger */}
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="md:hidden p-2 text-zinc-700 hover:text-black focus:outline-none"
+              aria-label="Toggle menu"
+            >
+              <span className="material-symbols-outlined text-2xl">
+                {mobileMenuOpen ? "close" : "menu"}
+              </span>
+            </button>
+          </div>
+        </div>
+
+        {/* Mobile dropdown */}
+        {mobileMenuOpen && (
+          <div className="md:hidden border-b border-zinc-200 bg-[#F7F7F5] px-6 py-4 flex flex-col gap-3">
+            <a
+              href="#studio"
+              onClick={() => setMobileMenuOpen(false)}
+              className="text-sm font-medium text-zinc-700 py-1"
+            >
+              Auralis Studio
+            </a>
+            <a
+              href="#agents"
+              onClick={() => setMobileMenuOpen(false)}
+              className="text-sm font-medium text-zinc-700 py-1"
+            >
+              Auralis Agents
+            </a>
+            <a
+              href="#api"
+              onClick={() => setMobileMenuOpen(false)}
+              className="text-sm font-medium text-zinc-700 py-1"
+            >
+              Auralis API
+            </a>
+            <a
+              href="#resources"
+              onClick={() => setMobileMenuOpen(false)}
+              className="text-sm font-medium text-zinc-700 py-1"
+            >
+              Resources
+            </a>
+            <a
+              href="#enterprise"
+              onClick={() => setMobileMenuOpen(false)}
+              className="text-sm font-medium text-zinc-700 py-1"
+            >
+              Enterprise
+            </a>
+            <a
+              href="#pricing"
+              onClick={() => setMobileMenuOpen(false)}
+              className="text-sm font-medium text-zinc-700 py-1"
+            >
+              Pricing
+            </a>
+            <a
+              href="#signup"
+              onClick={() => setMobileMenuOpen(false)}
+              className="bg-black text-white text-center py-2.5 rounded-full text-sm font-medium mt-2"
+            >
+              Sign up
+            </a>
+          </div>
+        )}
+      </nav>
+
+      {/* ==================== MAIN CANVAS ==================== */}
+      <main className="flex-grow pt-[140px] pb-12">
+        {/* ==================== HERO SECTION ==================== */}
+        <section className="max-w-[1280px] mx-auto px-6 sm:px-8 mb-[120px] lg:mb-[140px]">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            <div className="lg:col-span-7 flex flex-col gap-8">
+              <h1 className="text-5xl sm:text-7xl lg:text-[84px] font-semibold text-black tracking-[-0.04em] leading-[0.98]">
+                Making digital experiences sound human
+              </h1>
+              <div className="flex flex-wrap items-center gap-4 mt-2">
+                <a
+                  href="#signup"
+                  className="bg-black text-white px-7 py-3.5 rounded-full font-medium transition-all hover:bg-zinc-800 active:scale-95 shadow-sm"
+                >
+                  Sign up
+                </a>
+                <a
+                  href="#sales"
+                  className="bg-transparent border border-zinc-400 text-black px-7 py-3.5 rounded-full font-medium transition-all hover:bg-zinc-200 active:scale-95"
+                >
+                  Contact sales
+                </a>
+              </div>
+            </div>
+
+            <div className="lg:col-span-4 lg:col-start-9 flex justify-start lg:justify-end">
+              <p className="text-base sm:text-lg text-secondary-auralis max-w-sm text-left pt-2 lg:pt-4 leading-relaxed">
+                Enterprise AI voice infrastructure engineered for ultra-low latency,
+                hyper-realistic voice generation, and autonomous agents that listen, reason, and act.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* ==================== HERO PRODUCT PANEL (CONSOLE) ==================== */}
+        <section className="max-w-[1280px] mx-auto px-6 sm:px-8 mb-[140px] lg:mb-[180px]">
+          <div className="bg-panel-auralis rounded-3xl p-6 sm:p-8 flex flex-col relative overflow-hidden border border-border-auralis min-h-[580px] sm:min-h-[620px] justify-between shadow-sm">
+            {/* Top Tabs Bar */}
+            <div className="flex flex-wrap justify-between items-center gap-4 z-10">
+              <div className="flex bg-[#f7f3f2] p-1 rounded-full border border-border-auralis shadow-sm">
+                <button
+                  onClick={() => setActiveTab("studio")}
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                    activeTab === "studio"
+                      ? "bg-white text-black shadow-sm"
+                      : "text-secondary-auralis hover:text-black"
+                  }`}
+                >
+                  Auralis Studio
+                </button>
+                <button
+                  onClick={() => setActiveTab("agents")}
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                    activeTab === "agents"
+                      ? "bg-white text-black shadow-sm"
+                      : "text-secondary-auralis hover:text-black"
+                  }`}
+                >
+                  Auralis Agents
+                </button>
+                <button
+                  onClick={() => setActiveTab("api")}
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                    activeTab === "api"
+                      ? "bg-white text-black shadow-sm"
+                      : "text-secondary-auralis hover:text-black"
+                  }`}
+                >
+                  Auralis API
+                </button>
+              </div>
+
+              <div className="bg-[#f7f3f2] px-4 py-2 rounded-full border border-border-auralis flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span className="text-sm font-medium text-zinc-800">
+                  {activeTab === "studio"
+                    ? "AI Voice Generator"
+                    : activeTab === "agents"
+                    ? "Conversational Engine"
+                    : "Low-Latency WebSocket API"}
+                </span>
+              </div>
+            </div>
+
+            {/* Center Glowing Orbs (Simulated with CSS gradients) */}
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-90 overflow-hidden">
+              <div className="w-[300px] h-[300px] rounded-full bg-gradient-to-tr from-rose-500 to-orange-400 blur-3xl absolute -ml-40 animate-pulse transition-opacity duration-1000"></div>
+              <div className="w-[420px] h-[420px] rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 blur-3xl absolute opacity-70"></div>
+              <div className="w-[280px] h-[280px] rounded-full bg-gradient-to-tr from-emerald-500 to-teal-400 blur-3xl absolute ml-40 mt-20 opacity-80"></div>
+              <div className="w-[350px] h-[350px] rounded-full bg-gradient-to-tr from-sky-400 to-blue-500 blur-3xl absolute ml-80 -mt-20 opacity-75"></div>
+            </div>
+
+            {/* Play Button Center Console */}
+            <div className="z-10 self-center my-auto flex flex-col items-center gap-4 py-16">
+              <button
+                onClick={() => setIsPlaying(!isPlaying)}
+                className="w-20 h-20 bg-white rounded-full flex items-center justify-center shadow-xl border border-border-auralis transition-all duration-300 hover:scale-105 active:scale-95 group cursor-pointer"
+                aria-label={isPlaying ? "Pause audio" : "Play audio"}
+              >
+                <span className="material-symbols-outlined text-4xl text-black pl-0.5 group-hover:text-emerald-600 transition-colors">
+                  {isPlaying ? "pause" : "play_arrow"}
+                </span>
+              </button>
+              <div className="text-xs font-mono text-zinc-500 uppercase tracking-widest bg-white/70 px-3 py-1 rounded-full border border-zinc-200">
+                {isPlaying ? "Live Synthesis Stream" : "Stream Paused"}
+              </div>
+            </div>
+
+            {/* Bottom Bar Controls */}
+            <div className="flex flex-col sm:flex-row justify-between items-center gap-4 z-10 bg-white/80 backdrop-blur-md p-4 rounded-2xl border border-border-auralis">
+              <div className="flex gap-4 sm:gap-6 overflow-x-auto no-scrollbar w-full sm:w-auto pb-1 sm:pb-0">
+                {[
+                  "AI Voice Generator",
+                  "Text to Speech",
+                  "Music",
+                  "Sound Effects",
+                  "Voice Cloning",
+                ].map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => setActiveCategory(cat)}
+                    className={`text-sm font-medium whitespace-nowrap transition-colors ${
+                      activeCategory === cat
+                        ? "text-black border-b-2 border-black pb-0.5"
+                        : "text-secondary-auralis hover:text-black"
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+              <a
+                href="#signup"
+                className="w-full sm:w-auto text-center bg-black text-white px-6 py-2 rounded-full text-sm font-medium whitespace-nowrap hover:bg-zinc-800 transition-colors"
+              >
+                Sign up
+              </a>
+            </div>
+          </div>
+        </section>
+
+        {/* ==================== TRUST STRIP ==================== */}
+        <section className="max-w-[1280px] mx-auto px-6 sm:px-8 text-center mb-10">
+          <h3 className="font-label-caps text-label-caps text-secondary-auralis uppercase tracking-widest">
+            Trusted by teams building modern audio experiences
+          </h3>
+        </section>
+
+        {/* ==================== LOGO MARQUEE TICKER ==================== */}
+        <section className="w-full overflow-hidden mb-[120px] lg:mb-[140px] py-4 border-y border-zinc-200/50">
+          <div className="flex whitespace-nowrap overflow-hidden group">
+            {/* First Set */}
+            <div className="flex items-center gap-24 animate-marquee group-hover:pause-marquee min-w-full">
+              {marqueeLogos.map((logo, idx) => (
+                <div
+                  key={`marquee-1-${idx}`}
+                  className="flex items-center gap-2.5 text-zinc-400 hover:text-zinc-700 transition-colors font-bold text-xl uppercase tracking-tighter italic select-none"
+                >
+                  <span className="material-symbols-outlined text-3xl">
+                    {logo.icon}
+                  </span>
+                  {logo.name}
+                </div>
+              ))}
+            </div>
+
+            {/* Second Duplicate Set for Continuous Loop */}
+            <div
+              aria-hidden="true"
+              className="flex items-center gap-24 animate-marquee group-hover:pause-marquee min-w-full"
+            >
+              {marqueeLogos.map((logo, idx) => (
+                <div
+                  key={`marquee-2-${idx}`}
+                  className="flex items-center gap-2.5 text-zinc-400 hover:text-zinc-700 transition-colors font-bold text-xl uppercase tracking-tighter italic select-none"
+                >
+                  <span className="material-symbols-outlined text-3xl">
+                    {logo.icon}
+                  </span>
+                  {logo.name}
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ==================== PLATFORM OVERVIEW (BENTO GRID) ==================== */}
+        <section className="max-w-[1280px] mx-auto px-6 sm:px-8 mb-[140px] lg:mb-[180px]">
+          <div className="text-center max-w-3xl mx-auto mb-16">
+            <h2 className="text-4xl sm:text-5xl lg:text-[54px] font-semibold text-black tracking-[-0.03em] mb-6 leading-tight">
+              Two systems, one shared intelligence layer
+            </h2>
+            <p className="text-base sm:text-lg text-secondary-auralis leading-relaxed">
+              Combine studio-grade creative tools with autonomous voice agent orchestration on a unified neural backbone.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
+            {/* Large Card 1 */}
+            <div className="bg-card-auralis rounded-2xl p-6 border border-border-auralis h-[300px] flex flex-col justify-between relative overflow-hidden group hover:shadow-md transition-shadow">
+              <div className="absolute inset-0 bg-gradient-to-br from-indigo-600/15 to-purple-600/25 opacity-60 group-hover:opacity-80 transition-opacity"></div>
+              <div className="flex justify-between items-start z-10">
+                <span className="material-symbols-outlined text-zinc-700 text-2xl">
+                  edit_document
+                </span>
+                <span className="text-xs font-mono uppercase bg-white/70 px-2.5 py-1 rounded-md border border-zinc-200">
+                  Studio v2
+                </span>
+              </div>
+              <div className="z-10">
+                <h4 className="text-xl font-semibold mb-2 text-black">
+                  Soft Editor UI
+                </h4>
+                <p className="text-sm text-secondary-auralis leading-relaxed">
+                  Intuitive timeline manipulation, granular pitch control, and multi-track spatial rendering in real time.
+                </p>
+              </div>
+            </div>
+
+            {/* Large Card 2 */}
+            <div className="bg-card-auralis rounded-2xl p-6 border border-border-auralis h-[300px] flex flex-col justify-between relative overflow-hidden group hover:shadow-md transition-shadow">
+              <div className="absolute inset-0 bg-gradient-to-br from-emerald-600/15 to-teal-600/25 opacity-60 group-hover:opacity-80 transition-opacity"></div>
+              <div className="flex justify-between items-start z-10">
+                <span className="material-symbols-outlined text-zinc-700 text-2xl">
+                  closed_caption
+                </span>
+                <span className="text-xs font-mono uppercase bg-white/70 px-2.5 py-1 rounded-md border border-zinc-200">
+                  Whisper v4
+                </span>
+              </div>
+              <div className="z-10">
+                <h4 className="text-xl font-semibold mb-2 text-black">
+                  Transcript Panel
+                </h4>
+                <p className="text-sm text-secondary-auralis leading-relaxed">
+                  Instant bi-directional phonetic translation, speaker diarization, and context-aware punctuation synchronization.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Full-width 16:9 Showcase Widget with Live Spectral UI */}
+          <div className="w-full aspect-[16/10] sm:aspect-[16/9] bg-panel-auralis rounded-3xl border border-border-auralis flex items-center justify-center overflow-hidden relative group shadow-sm">
+            {/* Background Studio Graphic */}
+            <img
+              alt="Dashboard Preview"
+              className="w-full h-full object-cover opacity-60 group-hover:opacity-75 transition-opacity duration-700"
+              src="https://images.unsplash.com/photo-1604076913837-52ab5629fba9?q=80&w=1400&auto=format&fit=crop"
+            />
+
+            <div className="absolute inset-0 flex items-center justify-center z-20 p-4">
+              {/* Glowing Accent Ambient Lights */}
+              <div className="absolute w-72 h-72 bg-blue-500/25 rounded-full blur-[90px] -translate-x-24 -translate-y-12 pointer-events-none"></div>
+              <div className="absolute w-72 h-72 bg-purple-500/25 rounded-full blur-[90px] translate-x-24 translate-y-12 pointer-events-none"></div>
+
+              {/* Glassmorphic Floating Widget Card */}
+              <div className="relative w-full max-w-[460px] bg-white/35 backdrop-blur-3xl border border-white/50 rounded-[2rem] p-6 sm:p-8 shadow-[0_48px_96px_-24px_rgba(0,0,0,0.25),inset_0_0_0_1px_rgba(255,255,255,0.5)] flex flex-col gap-6 sm:gap-7">
+                {/* Header: Identifier & Badge */}
+                <div className="flex items-center justify-between">
+                  <div className="flex flex-col">
+                    <span className="text-[11px] font-bold uppercase tracking-[0.25em] text-black/60 mb-0.5">
+                      Neural Engine v4.2 PRO
+                    </span>
+                    <span className="text-sm font-semibold text-black tracking-tight">
+                      Real-time Synthesis Active
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 bg-emerald-500/20 px-3 py-1.5 rounded-full border border-emerald-500/30">
+                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                    <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-widest">
+                      Studio Mode
+                    </span>
+                  </div>
+                </div>
+
+                {/* Spectral Equalizer Audio Visualizer */}
+                <div className="flex items-end justify-between h-20 sm:h-24 gap-1 sm:gap-1.5 px-2">
+                  {spectrumHeights.map((h, i) => (
+                    <div
+                      key={i}
+                      style={{ height: `${h}%` }}
+                      className={`w-1.5 rounded-full transition-all duration-200 ${
+                        i >= 4 && i <= 6
+                          ? "bg-gradient-to-t from-purple-500/60 to-purple-600"
+                          : "bg-gradient-to-t from-blue-500/50 to-blue-600"
+                      }`}
+                    />
+                  ))}
+                </div>
+
+                {/* Telemetry Metrics Grid */}
+                <div className="grid grid-cols-3 gap-4 py-2 border-y border-black/5">
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-[10px] uppercase tracking-widest text-secondary-auralis font-semibold">
+                      Latency
+                    </span>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-xl font-bold text-black">24</span>
+                      <span className="text-xs text-secondary-auralis font-medium">
+                        ms
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-[10px] uppercase tracking-widest text-secondary-auralis font-semibold">
+                      Confidence
+                    </span>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-xl font-bold text-black">99.8</span>
+                      <span className="text-xs text-secondary-auralis font-medium">
+                        %
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-[10px] uppercase tracking-widest text-secondary-auralis font-semibold">
+                      Stability
+                    </span>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-xl font-bold text-black">0.02</span>
+                      <span className="text-xs text-secondary-auralis font-medium">
+                        jitter
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Interactive Player Controls */}
+                <div className="flex items-center justify-between pt-1">
+                  <div className="flex items-center gap-5">
+                    <button
+                      onClick={() => setSpectrumHeights((p) => p.map((h) => Math.max(15, h - 10)))}
+                      className="material-symbols-outlined text-2xl text-black/60 hover:text-black transition-colors"
+                      aria-label="Previous track"
+                    >
+                      skip_previous
+                    </button>
+                    <button
+                      onClick={() => setIsPlaying(!isPlaying)}
+                      className="w-12 h-12 bg-black text-white rounded-full flex items-center justify-center shadow-lg hover:scale-105 active:scale-95 transition-transform"
+                      aria-label={isPlaying ? "Pause" : "Play"}
+                    >
+                      <span className="material-symbols-outlined fill text-2xl text-white">
+                        {isPlaying ? "pause" : "play_arrow"}
+                      </span>
+                    </button>
+                    <button
+                      onClick={() => setSpectrumHeights((p) => p.map((h) => Math.min(100, h + 10)))}
+                      className="material-symbols-outlined text-2xl text-black/60 hover:text-black transition-colors"
+                      aria-label="Next track"
+                    >
+                      skip_next
+                    </button>
+                  </div>
+                  <div className="flex flex-col items-end gap-1">
+                    <span className="text-[12px] font-mono font-bold text-black bg-white/60 px-3 py-1 rounded-lg border border-white/70 shadow-sm">
+                      00:42.12
+                    </span>
+                    <span className="text-[9px] font-bold text-secondary-auralis/70 uppercase tracking-tighter">
+                      Total Length 04:20
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ==================== AURALIS STUDIO MODULE ==================== */}
+        <section id="studio" className="max-w-[1280px] mx-auto px-6 sm:px-8 mb-[140px] lg:mb-[180px]">
+          <div className="flex items-center gap-4 mb-8">
+            <span className="font-label-caps text-label-caps bg-surface-variant text-black px-3.5 py-1.5 rounded-full border border-border-auralis">
+              Auralis Studio
+            </span>
+            <div className="h-px bg-zinc-300 flex-grow opacity-60"></div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 mb-12">
+            <div className="lg:col-span-5">
+              <h2 className="text-3xl sm:text-5xl font-semibold text-black leading-tight tracking-[-0.03em]">
+                Create, refine, &amp; scale audio in one place
+              </h2>
+            </div>
+            <div className="lg:col-span-6 lg:col-start-7 flex items-end">
+              <p className="text-base sm:text-lg text-secondary-auralis leading-relaxed">
+                From voice prompts to rich cinematic soundscapes, fine-tune frequency responses, phonemes, and emotion curves with sub-millisecond precision.
+              </p>
+            </div>
+          </div>
+
+          {/* Cards Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            {/* Studio Card 1 */}
+            <div className="bg-card-auralis rounded-2xl border border-border-auralis h-[320px] flex flex-col justify-end relative overflow-hidden group hover:shadow-md transition-shadow">
+              <img
+                alt="Audio Timeline UI"
+                className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                src="https://images.unsplash.com/photo-1604076850742-4c7221f3101b?q=80&w=1000&auto=format&fit=crop"
+              />
+              <div className="z-10 bg-black/40 backdrop-blur-xl border-t border-white/20 p-6 rounded-b-2xl text-white">
+                <h4 className="text-xl font-semibold mb-1 text-white">
+                  Soft Editor UI
+                </h4>
+                <p className="text-sm text-white/80">
+                  Full DAW capabilities right inside your browser, backed by headless streaming APIs.
+                </p>
+              </div>
+            </div>
+
+            {/* Studio Card 2 */}
+            <div className="bg-card-auralis rounded-2xl p-6 border border-border-auralis h-[320px] flex flex-col justify-between relative overflow-hidden group hover:shadow-md transition-shadow">
+              <div className="absolute inset-0 bg-gradient-to-br from-transparent to-surface-variant/30 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+              <div className="flex justify-between items-start z-10">
+                <span className="material-symbols-outlined text-secondary-auralis text-2xl">
+                  closed_caption
+                </span>
+                <span className="text-xs font-mono uppercase bg-zinc-100 px-2.5 py-1 rounded-md border border-zinc-200">
+                  Realtime Sync
+                </span>
+              </div>
+              <div className="z-10">
+                <h4 className="text-xl font-semibold mb-2 text-black">
+                  Transcript Panel
+                </h4>
+                <p className="text-sm text-secondary-auralis leading-relaxed">
+                  Edit audio by simply editing text. Deletions, cadence modifications, and voice tone shift instantaneously.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* 4 Small Action Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
+            {[
+              { icon: "music_note", label: "Music" },
+              { icon: "graphic_eq", label: "SFX" },
+              { icon: "record_voice_over", label: "Voices" },
+              { icon: "movie", label: "Image & Video" },
+            ].map((item, idx) => (
+              <div
+                key={idx}
+                className="bg-panel-auralis rounded-xl p-5 border border-border-auralis flex flex-col gap-3 items-start hover:bg-surface-variant/70 transition-all cursor-pointer group hover:scale-[1.02]"
+              >
+                <span className="material-symbols-outlined text-black text-2xl group-hover:text-emerald-600 transition-colors">
+                  {item.icon}
+                </span>
+                <span className="font-medium text-sm text-zinc-900">
+                  {item.label}
+                </span>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* ==================== AURALIS AGENTS MODULE ==================== */}
+        <section id="agents" className="max-w-[1280px] mx-auto px-6 sm:px-8 mb-[140px] lg:mb-[160px]">
+          <div className="flex items-center gap-4 mb-8">
+            <span className="font-label-caps text-label-caps bg-surface-variant text-black px-3.5 py-1.5 rounded-full border border-border-auralis">
+              Auralis Agents
+            </span>
+            <div className="h-px bg-zinc-300 flex-grow opacity-60"></div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 mb-12">
+            <div className="lg:col-span-5">
+              <h2 className="text-3xl sm:text-5xl font-semibold text-black leading-tight tracking-[-0.03em]">
+                Build agents that listen, respond, &amp; act
+              </h2>
+            </div>
+            <div className="lg:col-span-6 lg:col-start-7 flex items-end">
+              <p className="text-base sm:text-lg text-secondary-auralis leading-relaxed">
+                Deploy autonomous conversational agents equipped with sub-second interruptibility, multi-turn reasoning, and seamless system integrations.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {/* Agent Card 1: Omnichannel Agents */}
+            <div className="bg-card-auralis rounded-3xl p-6 sm:p-8 border border-border-auralis min-h-[460px] flex flex-col relative overflow-hidden group hover:shadow-md transition-shadow">
+              {/* Radiant Orbs */}
+              <div className="absolute inset-0 flex items-center justify-center opacity-40 group-hover:opacity-60 transition-opacity duration-700">
+                <div className="w-[220px] h-[220px] rounded-full bg-gradient-to-r from-blue-400 to-cyan-300 blur-2xl absolute -ml-20 -mt-20"></div>
+                <div className="w-[220px] h-[220px] rounded-full bg-gradient-to-r from-purple-400 to-pink-300 blur-2xl absolute ml-20 mt-20"></div>
+              </div>
+
+              <div className="z-10 bg-white/80 backdrop-blur-sm self-start px-4 py-1.5 rounded-full border border-border-auralis text-sm font-medium mb-auto shadow-sm">
+                Omnichannel agents
+              </div>
+
+              {/* Chat Simulation Component */}
+              <div className="z-10 mt-auto bg-white/40 backdrop-blur-2xl p-5 sm:p-6 rounded-[2rem] border border-white/60 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.1)] flex flex-col gap-3">
+                <div className="flex gap-3 items-center">
+                  <div className="w-10 h-10 bg-black rounded-full flex items-center justify-center shadow-sm flex-shrink-0">
+                    <span className="material-symbols-outlined text-white text-sm">
+                      smart_toy
+                    </span>
+                  </div>
+                  <div className="bg-white/70 backdrop-blur-md border border-white/60 px-4 py-2.5 rounded-2xl rounded-tl-sm text-sm text-zinc-900 shadow-sm">
+                    Hello! How can I assist you today?
+                  </div>
+                </div>
+
+                <div className="flex gap-3 items-center flex-row-reverse">
+                  <div className="w-10 h-10 bg-white/70 backdrop-blur-md border border-white/60 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm">
+                    <span className="material-symbols-outlined text-black text-sm">
+                      person
+                    </span>
+                  </div>
+                  <div className="bg-black text-white px-4 py-2.5 rounded-2xl rounded-tr-sm text-sm shadow-md">
+                    I need help checking my deployment status.
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Agent Card 2: Analytics & Deep Insights */}
+            <div className="bg-card-auralis rounded-3xl p-6 sm:p-8 border border-border-auralis min-h-[460px] flex flex-col relative overflow-hidden group hover:shadow-md transition-shadow">
+              {/* Abstract Chart Representation */}
+              <div className="absolute inset-0 flex items-end justify-center pb-12 opacity-50 group-hover:opacity-80 transition-opacity duration-700 pointer-events-none">
+                <div className="flex items-end gap-3 h-44 w-full px-8">
+                  <div className="w-full bg-zinc-200 rounded-t-md h-[30%] transition-all duration-500 group-hover:h-[35%]"></div>
+                  <div className="w-full bg-zinc-200 rounded-t-md h-[50%] transition-all duration-500 group-hover:h-[55%]"></div>
+                  <div className="w-full bg-black/20 rounded-t-md h-[80%] relative transition-all duration-500 group-hover:h-[85%]">
+                    <div className="absolute -top-3.5 -right-3.5 w-7 h-7 bg-black rounded-full flex items-center justify-center border-2 border-white shadow-sm">
+                      <div className="w-2.5 h-2.5 bg-white rounded-full"></div>
+                    </div>
+                  </div>
+                  <div className="w-full bg-zinc-200 rounded-t-md h-[60%] transition-all duration-500 group-hover:h-[65%]"></div>
+                  <div className="w-full bg-zinc-200 rounded-t-md h-[40%] transition-all duration-500 group-hover:h-[45%]"></div>
+                </div>
+              </div>
+
+              <div className="z-10 bg-white/80 backdrop-blur-sm self-start px-4 py-1.5 rounded-full border border-border-auralis text-sm font-medium mb-auto shadow-sm">
+                Analytics
+              </div>
+
+              <div className="z-10 mt-auto bg-white/50 backdrop-blur-2xl p-6 sm:p-8 rounded-[2rem] border border-white/60 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.1)]">
+                <h4 className="text-xl font-semibold mb-2 text-black">
+                  Deep Insights
+                </h4>
+                <p className="text-sm text-secondary-auralis leading-relaxed">
+                  Real-time sentiment scoring, interruption analytics, and automated transcript evaluation across every live call.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ==================== SIGN OFF SECTION (FINAL CTA) ==================== */}
+        <section className="max-w-[1280px] mx-auto px-6 sm:px-8 mb-[120px] lg:mb-[140px] text-center flex flex-col items-center">
+          <h2 className="text-3xl sm:text-5xl font-semibold text-black mb-8 max-w-3xl leading-tight tracking-[-0.03em]">
+            The future of voice starts here
+          </h2>
+          <div className="flex flex-wrap justify-center items-center gap-4">
+            <a
+              href="#signup"
+              className="bg-black text-white px-8 py-3.5 rounded-full font-medium transition-all hover:bg-zinc-800 active:scale-95 shadow-sm"
+            >
+              Get started
+            </a>
+            <a
+              href="#sales"
+              className="bg-transparent border border-zinc-400 text-black px-8 py-3.5 rounded-full font-medium transition-all hover:bg-zinc-200 active:scale-95"
+            >
+              Talk to sales
+            </a>
+          </div>
+        </section>
+      </main>
+
+      {/* ==================== FOOTER ==================== */}
+      <footer className="w-full border-t border-zinc-200 py-12 bg-transparent">
+        <div className="max-w-[1280px] mx-auto px-6 sm:px-8 flex flex-col md:flex-row justify-between items-center gap-8">
+          <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-8 text-center sm:text-left">
+            <span className="text-xl font-bold tracking-tighter text-zinc-900">
+              Auralis
+            </span>
+            <span className="text-sm text-secondary-auralis">
+              © 2024 Auralis AI. Engineered for precision.
+            </span>
+          </div>
+
+          <div className="flex flex-wrap justify-center items-center gap-6">
+            <a
+              href="#"
+              className="text-sm text-secondary-auralis hover:text-black transition-colors"
+            >
+              Twitter
+            </a>
+            <a
+              href="#"
+              className="text-sm text-secondary-auralis hover:text-black transition-colors"
+            >
+              GitHub
+            </a>
+            <a
+              href="#"
+              className="text-sm text-secondary-auralis hover:text-black transition-colors"
+            >
+              Terms
+            </a>
+            <a
+              href="#"
+              className="text-sm text-secondary-auralis hover:text-black transition-colors"
+            >
+              Privacy
+            </a>
+          </div>
+        </div>
+      </footer>
+    </div>
   );
 }

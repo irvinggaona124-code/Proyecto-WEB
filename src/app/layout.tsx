@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "LICITA.LAT // Plataforma de Inteligencia y Documentación de Compras Públicas (PA • CO • CR)",
+  title: "Auralis - Bringing technology to life | AI Voice Infrastructure",
   description:
-    "Licitaciones del Estado analizadas, auditadas y ganadas con IA para Panamá (DGCP), Colombia (SECOP II) y Costa Rica (SICOP).",
+    "Making digital experiences sound human. Enterprise AI audio infrastructure engineered for precision, ultra-low latency, and omnichannel agents.",
 };
 
 export default function RootLayout({
@@ -13,16 +13,20 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="es" className="dark">
+    <html lang="en" className="light scroll-smooth">
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
-          href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@300;400;500;600&family=Geist:wght@300;400;500;600;700;800&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;800&family=Geist+Mono:wght@400;500;600&family=Inter:wght@300;400;500;600;700&display=swap"
+          rel="stylesheet"
+        />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
           rel="stylesheet"
         />
       </head>
-      <body className="min-h-screen bg-black text-[#eaeaea] font-sans selection:bg-[#0070f3] selection:text-white pb-24">
+      <body className="antialiased min-h-screen flex flex-col font-sans overflow-x-hidden selection:bg-black selection:text-white">
         {children}
       </body>
     </html>
